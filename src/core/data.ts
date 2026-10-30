@@ -2,7 +2,7 @@
 
 export const MAX_FLOOR = 10;
 export const INV_MAX = 20;
-export const MAX_FULLNESS = 200;
+export const MAX_FULLNESS = 300;
 
 export type CharId = 'elwin' | 'barrage' | 'sion' | 'fate' | 'clayd';
 export const CHAR_IDS: CharId[] = ['elwin', 'barrage', 'sion', 'fate', 'clayd'];
@@ -34,7 +34,7 @@ export const CHARS: Record<CharId, CharDef> = {
   },
   barrage: {
     id: 'barrage', name: 'バラージ', role: 'バランス型・瞬間火力', glyph: 'バ', color: 0xff8a3d,
-    hp: 54, hpUp: 7, atk: 7.5, atkUp: 1.1, def: 1, mp: 0, mpUp: 0, evasion: 0,
+    hp: 58, hpUp: 8, atk: 7.5, atkUp: 1.1, def: 1, mp: 0, mpUp: 0, evasion: 0,
     abilityName: '変身(Fキー)',
     abilityDesc: '8ターン変身し、攻撃力が上がって2回行動できる。使用後28ターンは再使用不可。',
   },
@@ -83,9 +83,9 @@ export const EFFECTS: Effect[] = [
   { kind: 'herb', id: 'poison', name: '毒草', weight: 4, value: 8, desc: 'HPが8減り、満腹度も下がる' },
   { kind: 'herb', id: 'eye', name: '目薬草', weight: 4, value: 0, desc: 'このフロアの罠が全て見える' },
 
-  { kind: 'food', id: 'onigiri', name: 'おにぎり', weight: 10, value: 80, desc: '満腹度が80回復する' },
-  { kind: 'food', id: 'big', name: '大きなおにぎり', weight: 3, value: 160, desc: '満腹度が160回復する' },
-  { kind: 'food', id: 'jerky', name: '干し肉', weight: 5, value: 50, desc: '満腹度が50回復する' },
+  { kind: 'food', id: 'onigiri', name: 'おにぎり', weight: 10, value: 150, desc: '満腹度が150回復する' },
+  { kind: 'food', id: 'big', name: '大きなおにぎり', weight: 3, value: 300, desc: '満腹度が300回復する(最大まで)' },
+  { kind: 'food', id: 'jerky', name: '干し肉', weight: 5, value: 100, desc: '満腹度が100回復する' },
 
   { kind: 'scroll', id: 'map', name: '地図の巻物', weight: 6, value: 0, desc: 'このフロアの地形が全て分かる' },
   { kind: 'scroll', id: 'warp', name: '瞬間移動の巻物', weight: 5, value: 0, desc: 'フロア内のどこかへ飛ぶ' },
