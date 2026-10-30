@@ -351,19 +351,52 @@ export class Game {
     return -1;
   }
 
+  /**
+   * その座標が属する「エリア」。部屋の中、または部屋にじかにつながる出入口なら部屋の番号。
+   * 通路なら -1。
+   */
+  areaAt(x: number, y: number): number {
+    const i = this.roomIndexAt(x, y);
+    if (i >= 0) return i;
+    if (this.tile(x, y) === WALL) return -1;
+    for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
+      const j = this.roomIndexAt(x + dx, y + dy);
+      if (j >= 0) return j;
+    }
+    return -1;
+  }
+
+  /**
+   * プレイヤーに見えるマスか。
+   * 部屋の中(出入口を含む)では、その部屋と周りの壁がまるごと見える。
+   * 通路では、自分の周り1マスしか見えない。
+   */
   canSee(x: number, y: number): boolean {
     const p = this.player;
-    if (Math.max(Math.abs(x - p.x), Math.abs(y - p.y)) > 9) return false;
+    const d = Math.max(Math.abs(x - p.x), Math.abs(y - p.y));
+    if (d <= 1) return true;
+    const a = this.areaAt(p.x, p.y);
+    if (a < 0 || d > 12) return false;
+    const r = this.map.rooms[a];
+    if (x < r.x - 1 || x > r.x + r.w || y < r.y - 1 || y > r.y + r.h) return false;
     return this.los(p.x, p.y, x, y);
+  }
+
+  /** 敵がプレイヤーに気づくか。同じ部屋で見通せるか、すぐ隣にいるときだけ。通路では隣のマスしか気づかない。 */
+  private monsterNotices(m: Monster, d: number): boolean {
+    if (d <= 1) return true;
+    const p = this.player;
+    const a = this.areaAt(p.x, p.y);
+    return a >= 0 && a === this.areaAt(m.x, m.y) && this.los(m.x, m.y, p.x, p.y);
   }
 
   updateSeen() {
     if (!this.trackSeen) return;
     const p = this.player;
-    for (let y = Math.max(0, p.y - 9); y <= Math.min(H - 1, p.y + 9); y++) {
-      for (let x = Math.max(0, p.x - 9); x <= Math.min(W - 1, p.x + 9); x++) {
+    for (let y = Math.max(0, p.y - 12); y <= Math.min(H - 1, p.y + 12); y++) {
+      for (let x = Math.max(0, p.x - 12); x <= Math.min(W - 1, p.x + 12); x++) {
         if (this.seen[y * W + x]) continue;
-        if (this.los(p.x, p.y, x, y)) this.seen[y * W + x] = 1;
+        if (this.canSee(x, y)) this.seen[y * W + x] = 1;
       }
     }
   }
@@ -1032,7 +1065,7 @@ export class Game {
       if (d > 16) continue;
       if (!field) field = this.distField(p.x, p.y, 16, this.monField);
       const fv = field[m.y * W + m.x];
-      if (fv >= 0 && fv <= 9 && this.los(m.x, m.y, p.x, p.y)) m.alerted = true;
+      if (this.monsterNotices(m, d)) m.alerted = true;
       else if (fv < 0 || fv > 14) m.alerted = false;
       if (!m.alerted) {
         if (this.rng.chance(0.4)) this.randomStep(m);
@@ -1055,9 +1088,9 @@ export class Game {
     const ai = m.def.ai;
     const adj = d === 1 && this.canStep(m.x, m.y, Math.sign(p.x - m.x), Math.sign(p.y - m.y));
     if (adj) { this.monsterMelee(m); return; }
-    // 遠距離攻撃は、同じ部屋にいる間(通路どうしの場合も)だけ撃てる。部屋を出れば逃げられる。
-    const lineOk = d >= 2 && this.isAligned(m) && this.los(m.x, m.y, p.x, p.y) && this.canSee(m.x, m.y) &&
-      this.roomIndexAt(m.x, m.y) === this.roomIndexAt(p.x, p.y);
+    // 遠距離攻撃は、同じ部屋にいる間だけ撃てる。通路では隣のマスしか見えない扱いなので撃てない。
+    const pa = this.areaAt(p.x, p.y);
+    const lineOk = d >= 2 && pa >= 0 && pa === this.areaAt(m.x, m.y) && this.isAligned(m) && this.los(m.x, m.y, p.x, p.y);
     if ((ai === 'ranged' || ai === 'mage') && lineOk && d <= m.def.range) {
       this.fx.push({ type: 'bolt', x: m.x, y: m.y, x2: p.x, y2: p.y });
       if (ai === 'ranged') this.hitPlayer(m, 1, false, `${m.def.name}の矢が飛んできた!`);

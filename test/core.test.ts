@@ -384,14 +384,60 @@ describe('遠距離攻撃は部屋を出れば逃げられる', () => {
     }
   });
 
-  it('通路どうしでは真っ直ぐ撃たれる', () => {
+  it('通路では敵の遠距離攻撃を受けない(通路は自分の周り1マスしか見えない扱い)', () => {
     const g = arena('elwin');
     g.map.rooms = [{ x: 2, y: 2, w: 4, h: 4 }];
     g.player.x = 15;
-    put(g, 'archer', 19, 5);
+    put(g, 'archer', 19, 5, { atk: 50 });
     const hp = g.player.hp;
     g.act({ t: 'wait' });
-    expect(g.player.hp).toBeLessThan(hp);
+    expect(g.player.hp).toBe(hp);
+  });
+});
+
+describe('通路では自分の周り1マスしか見えない', () => {
+  it('通路では隣のマスだけ、部屋の中では部屋全体が見える', () => {
+    const g = arena('elwin');
+    g.map.rooms = [{ x: 2, y: 2, w: 10, h: 10 }]; // 部屋は x2〜11
+    g.player.x = 5;
+    g.player.y = 5;
+    expect(g.canSee(11, 5)).toBe(true); // 同じ部屋の端
+    expect(g.canSee(16, 5)).toBe(false); // 部屋の外の通路
+    g.player.x = 15; // 通路
+    expect(g.areaAt(15, 5)).toBe(-1);
+    expect(g.canSee(16, 5)).toBe(true);
+    expect(g.canSee(18, 5)).toBe(false);
+    expect(g.canSee(8, 5)).toBe(false); // 部屋の中も、通路からは見えない
+  });
+
+  it('部屋の出入口に立つと、部屋の中が見える', () => {
+    const g = arena('elwin');
+    g.map.rooms = [{ x: 2, y: 2, w: 10, h: 10 }];
+    g.player.x = 12;
+    g.player.y = 5;
+    expect(g.areaAt(12, 5)).toBe(0);
+    expect(g.canSee(5, 5)).toBe(true);
+  });
+
+  it('通路にいるプレイヤーには、離れた敵は気づかず、隣に来て初めて気づく', () => {
+    const g = arena('elwin');
+    g.map.rooms = [{ x: 2, y: 2, w: 4, h: 4 }];
+    g.player.x = 15;
+    g.player.y = 5;
+    const far = put(g, 'goblin', 21, 5, { alerted: false });
+    g.act({ t: 'wait' });
+    expect(far.alerted).toBe(false);
+    const near = put(g, 'goblin', 16, 5, { alerted: false });
+    g.act({ t: 'wait' });
+    expect(near.alerted).toBe(true);
+  });
+
+  it('同じ部屋の敵には、離れていても気づかれる', () => {
+    const g = arena('elwin');
+    g.map.rooms = [{ x: 2, y: 2, w: 10, h: 10 }];
+    const m = put(g, 'goblin', 10, 5, { alerted: false });
+    g.act({ t: 'wait' });
+    expect(m.alerted).toBe(true);
   });
 });
 

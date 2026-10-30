@@ -94,6 +94,17 @@ async function main() {
   if (after.x !== before.x + 1 || after.y !== before.y - 1) throw new Error(`斜め移動に失敗: ${JSON.stringify(before)} → ${JSON.stringify(after)}`);
   await shot('03c_diagonal_moved');
 
+  // 3d. 通路では自分の周り1マスしか見えない
+  await startRun(1);
+  await stage(`let f = null;
+    for (let y = 1; y < 23 && !f; y++) for (let x = 2; x < 38; x++) {
+      if (g.tiles[y * 40 + x] === 1 && g.areaAt(x, y) === -1 && g.tiles[y * 40 + x + 1] === 1 && g.tiles[y * 40 + x - 1] === 1 && g.areaAt(x + 1, y) === -1 && g.areaAt(x - 1, y) === -1) { f = { x, y }; break; }
+    }
+    g.monsters = []; if (f) { p.x = f.x; p.y = f.y; g.seen.fill(0); }`);
+  const corr = await page.evaluate(`window.__app.game.areaAt(window.__app.game.player.x, window.__app.game.player.y)`);
+  if (corr !== -1) throw new Error('通路に立てなかった');
+  await shot('03d_corridor_view');
+
   // 4. 戦闘中
   await stage(`g.monsters = []; carve(p.x + 1, p.y); carve(p.x + 2, p.y); carve(p.x - 1, p.y);
     spawn('goblin', p.x + 1, p.y, { hp: 40, maxHp: 40, sleep: 0 }); spawn('slime', p.x - 1, p.y);

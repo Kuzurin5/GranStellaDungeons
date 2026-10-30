@@ -143,9 +143,9 @@ export class DungeonScene extends Phaser.Scene {
     const g = this.dg;
     const p = g.player;
     this.vis.fill(0);
-    for (let y = Math.max(0, p.y - 9); y <= Math.min(H - 1, p.y + 9); y++) {
-      for (let x = Math.max(0, p.x - 9); x <= Math.min(W - 1, p.x + 9); x++) {
-        if (g.los(p.x, p.y, x, y)) this.vis[y * W + x] = 1;
+    for (let y = Math.max(0, p.y - 12); y <= Math.min(H - 1, p.y + 12); y++) {
+      for (let x = Math.max(0, p.x - 12); x <= Math.min(W - 1, p.x + 12); x++) {
+        if (g.canSee(x, y)) this.vis[y * W + x] = 1;
       }
     }
   }
