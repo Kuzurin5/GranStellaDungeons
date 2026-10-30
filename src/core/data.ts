@@ -28,31 +28,31 @@ export interface CharDef {
 export const CHARS: Record<CharId, CharDef> = {
   elwin: {
     id: 'elwin', name: 'エルウィン', role: '持久型の近接', glyph: 'エ', color: 0x4da3ff,
-    hp: 62, hpUp: 8, atk: 6.5, atkUp: 1.0, def: 1, mp: 0, mpUp: 0, evasion: 0,
+    hp: 30, hpUp: 10, atk: 6.5, atkUp: 1.0, def: 1, mp: 0, mpUp: 0, evasion: 0,
     abilityName: '不屈の剣(常時)',
     abilityDesc: '与えたダメージの一部がHPとして回復する。殴り続けるほど崩れにくい。',
   },
   barrage: {
     id: 'barrage', name: 'バラージ', role: 'バランス型・瞬間火力', glyph: 'バ', color: 0xff8a3d,
-    hp: 58, hpUp: 8, atk: 7.5, atkUp: 1.1, def: 1, mp: 0, mpUp: 0, evasion: 0,
+    hp: 27, hpUp: 10, atk: 7.5, atkUp: 1.1, def: 1, mp: 0, mpUp: 0, evasion: 0,
     abilityName: '変身(Fキー)',
     abilityDesc: '8ターン変身し、攻撃力が上がって2回行動できる。使用後28ターンは再使用不可。',
   },
   sion: {
     id: 'sion', name: 'シオン', role: '魔法の遠距離', glyph: 'シ', color: 0xb36bff,
-    hp: 38, hpUp: 5, atk: 5, atkUp: 0.9, def: 0, mp: 15, mpUp: 1, evasion: 0,
+    hp: 20, hpUp: 8, atk: 5, atkUp: 0.9, def: 0, mp: 15, mpUp: 1, evasion: 0,
     abilityName: '魔法弾(Fキー)',
     abilityDesc: '向いている方向の直線上(7マス)の敵に高威力の魔法を撃つ。MPを3使う。打たれ弱い。',
   },
   fate: {
     id: 'fate', name: 'フェイト', role: 'スピード型の前衛・ハイリスク', glyph: 'フ', color: 0xff4d6d,
-    hp: 58, hpUp: 8, atk: 9, atkUp: 1.2, def: 0, mp: 0, mpUp: 0, evasion: 0.2,
+    hp: 25, hpUp: 12, atk: 9, atkUp: 1.2, def: 0, mp: 0, mpUp: 0, evasion: 0.2,
     abilityName: '血風(Fキー)',
     abilityDesc: 'HPを最大HPの1割ほど払い、周囲8マスの敵をまとめて斬る。素早く、攻撃を20%かわす。',
   },
   clayd: {
     id: 'clayd', name: 'クレイド', role: '情報・補助', glyph: 'ク', color: 0x4dd6a8,
-    hp: 60, hpUp: 8, atk: 7, atkUp: 1.1, def: 1, mp: 0, mpUp: 0, evasion: 0,
+    hp: 26, hpUp: 12, atk: 8, atkUp: 1.2, def: 1, mp: 0, mpUp: 0, evasion: 0,
     abilityName: '鑑定(Fキー)',
     abilityDesc: '持ち物の未鑑定品を全て鑑定し、周囲の罠を見つけ、敵の能力を40ターン表示する。使用後12ターンは再使用不可。',
   },
@@ -91,6 +91,7 @@ export const EFFECTS: Effect[] = [
   { kind: 'scroll', id: 'warp', name: '瞬間移動の巻物', weight: 5, value: 0, desc: 'フロア内のどこかへ飛ぶ' },
   { kind: 'scroll', id: 'sleep', name: '眠りの巻物', weight: 5, value: 10, desc: '周囲の敵を10ターン眠らせる' },
   { kind: 'scroll', id: 'fire', name: '炎の巻物', weight: 5, value: 18, desc: '周囲3マスの敵に18ダメージ' },
+  { kind: 'scroll', id: 'purify', name: 'お祓いの巻物', weight: 4, value: 0, desc: '装備と持ち物にかかった呪いを全て解く' },
 
   { kind: 'wand', id: 'bolt', name: '雷の杖', weight: 6, value: 16, desc: '前方の敵に16ダメージ' },
   { kind: 'wand', id: 'sleep', name: '眠りの杖', weight: 5, value: 15, desc: '前方の敵を15ターン眠らせる' },

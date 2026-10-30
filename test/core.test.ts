@@ -184,6 +184,30 @@ describe('基本ルール', () => {
     expect(g.player.weapon!.effect).toBe('cursed');
   });
 
+  it('お祓いの巻物で呪いが解け、装備を替えられるようになる', () => {
+    const g = arena('elwin');
+    const cursed = g.makeItem('weapon', 'cursed');
+    g.player.inv.push(cursed);
+    g.act({ t: 'use', i: g.player.inv.indexOf(cursed) });
+    expect(g.player.weapon!.effect).toBe('cursed');
+    const scroll = g.makeItem('scroll', 'purify');
+    g.player.inv.push(scroll);
+    g.act({ t: 'use', i: g.player.inv.indexOf(scroll) });
+    expect(g.player.weapon!.effect).not.toBe('cursed');
+    const iron = g.makeItem('weapon', 'iron');
+    g.player.inv.push(iron);
+    expect(g.act({ t: 'use', i: g.player.inv.indexOf(iron) })).toBe(true);
+    expect(g.player.weapon!.effect).toBe('iron');
+  });
+
+  it('初期HPは20〜30で、全員が低めから始まる', () => {
+    for (const id of CHAR_IDS) {
+      const g = new Game(id, 1);
+      expect(g.player.maxHp).toBeGreaterThanOrEqual(20);
+      expect(g.player.maxHp).toBeLessThanOrEqual(30);
+    }
+  });
+
   it('死亡するとゲームオーバーになり、ボスを倒すとクリアになる', () => {
     const g = arena('elwin');
     g.player.hp = 1;

@@ -651,7 +651,7 @@ export class Game {
     const slot = it.kind === 'weapon' ? 'weapon' : 'shield';
     const cur = p[slot];
     if (cur && cur.effect === 'cursed') {
-      this.log('呪われていて、装備を外せない!');
+      this.log('呪われていて、装備を外せない! お祓いの巻物で解ける。');
       return false;
     }
     this.removeItem(it);
@@ -660,7 +660,7 @@ export class Game {
     this.identify(it);
     const eff = effectOf(it.kind, it.effect);
     this.log(`${eff.name}を装備した。`);
-    if (it.effect === 'cursed') this.log('しまった、呪われていた!');
+    if (it.effect === 'cursed') this.log('しまった、呪われていた! お祓いの巻物で解ける。');
     return true;
   }
 
@@ -710,6 +710,14 @@ export class Game {
         }
         this.log('周囲の敵が眠りに落ちた。');
         break;
+      case 'purify': {
+        let n = 0;
+        for (const it of [p.weapon, p.shield, ...p.inv]) {
+          if (it && it.effect === 'cursed') { it.effect = 'wood'; n++; }
+        }
+        this.log(n > 0 ? `呪いが解けた!(${n}個)呪われた装備は普通の木の装備になった。` : '呪われた物は何もなかった。');
+        break;
+      }
       case 'fire': {
         this.fx.push({ type: 'fire', x: p.x, y: p.y });
         for (const m of this.monsters.slice()) {
