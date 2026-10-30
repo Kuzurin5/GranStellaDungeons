@@ -5,6 +5,7 @@ export const H = 24;
 export const WALL = 0;
 export const FLOOR = 1;
 export const STAIRS = 2;
+export const DOOR = 3; // 鍵のかかった扉(宝部屋の入口)
 
 export interface Room {
   x: number;

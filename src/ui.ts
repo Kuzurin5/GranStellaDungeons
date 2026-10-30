@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CharId } from './core/data';
+import { CharId, GimmickId } from './core/data';
 
 export const GAME_W = 1040;
 export const GAME_H = 660;
@@ -10,8 +10,9 @@ export const session: {
   charId: CharId;
   seed: number;
   startFloor: number;
+  gimmick: GimmickId | null;
   result: { cleared: boolean; floor: number; level: number; turns: number; cause: string; charId: CharId } | null;
-} = { charId: 'elwin', seed: 1, startFloor: 1, result: null };
+} = { charId: 'elwin', seed: 1, startFloor: 1, gimmick: null, result: null };
 
 export function newSeed(): number {
   const q = new URLSearchParams(location.search).get('seed');

@@ -38,6 +38,19 @@ export function botAct(g: Game, st: BotState): Action {
   const p = g.player;
   const adj = g.adjacentMonsters();
 
+  // 噴火の予告マスの上にいたら、予告のないマスへよける
+  if (g.eruptions.some((e) => e.x === p.x && e.y === p.y)) {
+    for (const [dx, dy] of DIRS) {
+      if (!g.canStep(p.x, p.y, dx, dy)) continue;
+      const nx = p.x + dx;
+      const ny = p.y + dy;
+      if (g.monsterAt(nx, ny) || g.eruptions.some((e) => e.x === nx && e.y === ny)) continue;
+      const tr = g.trapAt(nx, ny);
+      if (tr && tr.revealed) continue;
+      return { t: 'move', dx, dy };
+    }
+  }
+
   // 回復
   if (p.hp < p.maxHp * 0.45) {
     const h = findHeal(g);

@@ -5,7 +5,8 @@ import {
   INV_MAX, ItemKind, KIND_WEIGHTS, MAX_FLOOR, MAX_FULLNESS, SION_COST, SION_RANGE, TRAPS, TrapKind,
   CharId, EnemyDef, effectOf, expToNext,
 } from './data';
-import { FLOOR, FloorMap, H, STAIRS, W, WALL, generateFloor } from './mapgen';
+import { DOOR, FLOOR, FloorMap, H, STAIRS, W, WALL, generateFloor } from './mapgen';
+import { GIMMICKS, GimmickId, eruptionDamage } from './data';
 
 export interface Item {
   id: number;
@@ -82,7 +83,7 @@ export type Action =
   | { t: 'descend' };
 
 export interface Fx {
-  type: 'hit' | 'throw' | 'bolt' | 'sweep' | 'transform' | 'identify' | 'heal' | 'fire' | 'breath';
+  type: 'hit' | 'eruption' | 'throw' | 'bolt' | 'sweep' | 'transform' | 'identify' | 'heal' | 'fire' | 'breath';
   x: number;
   y: number;
   x2?: number;
@@ -119,13 +120,20 @@ export class Game {
   known = new Set<string>();
   alias: Record<string, string> = {};
   floorSerial = 0;
+  gimmick: GimmickId = 'none';
+  eruptions: { x: number; y: number }[] = [];
+  house: { room: number; triggered: boolean; revealed: boolean } | null = null;
+  vault: { room: number; doors: { x: number; y: number }[]; opened: boolean } | null = null;
+  private forcedGimmick: GimmickId | null = null;
+  private lastGimmick: GimmickId = 'none';
   private nextId = 1;
   private spawnTimer = 70;
   private monField = new Int16Array(W * H);
   private queue = new Int32Array(W * H);
 
-  constructor(charId: CharId, seed: number, opts: { trackSeen?: boolean; startFloor?: number } = {}) {
+  constructor(charId: CharId, seed: number, opts: { trackSeen?: boolean; startFloor?: number; gimmick?: GimmickId } = {}) {
     this.rng = new Rng(seed);
+    this.forcedGimmick = opts.gimmick ?? null;
     this.charId = charId;
     this.trackSeen = opts.trackSeen ?? false;
     this.setupAliases();
@@ -145,6 +153,7 @@ export class Game {
     }
     for (const e of EFFECTS) if (e.kind === 'food') this.known.add(`food:${e.id}`);
     this.known.add('herb:heal');
+    this.known.add('key:vault');
     this.known.add('weapon:wood');
     this.known.add('shield:wood');
   }
@@ -178,6 +187,10 @@ export class Game {
     this.monsters = [];
     this.traps = [];
     this.floorItems = [];
+    this.eruptions = [];
+    this.house = null;
+    this.vault = null;
+    this.gimmick = this.chooseGimmick(f);
     this.spawnTimer = 70;
     const p = this.player;
     p.x = this.map.start.x;
@@ -185,11 +198,191 @@ export class Game {
     this.populate();
     this.updateSeen();
     this.log(f === MAX_FLOOR ? '最深部に着いた。奥に何かの気配がする…' : `${f}階に着いた。`);
+    if (this.gimmick !== 'none') {
+      this.lastGimmick = this.gimmick;
+      this.log(GIMMICKS.find((g) => g.id === this.gimmick)!.announce);
+    } else {
+      this.lastGimmick = 'none';
+    }
+  }
+
+  private chooseGimmick(f: number): GimmickId {
+    if (this.forcedGimmick) {
+      const g = this.forcedGimmick;
+      this.forcedGimmick = null;
+      return g;
+    }
+    if (f < 2 || f >= MAX_FLOOR) return 'none';
+    const pool = GIMMICKS.filter((g) => f >= g.min && g.id !== this.lastGimmick);
+    if (pool.length === 0 || this.rng.chance(0.25)) return 'none'; // ギミックのない階も混ぜる
+    return this.rng.weighted(pool).id;
+  }
+
+  /** 敵が眠る部屋を1つ作る。踏み込むと全員が目を覚ます。 */
+  private setupHouse(): boolean {
+    const rooms = this.map.rooms;
+    const cand = rooms.map((_, i) => i).filter((i) => i !== this.map.startRoom && i !== this.map.farRoom);
+    if (cand.length === 0) return false;
+    const room = this.rng.pick(cand);
+    const r = rooms[room];
+    const n = Math.min(7, Math.max(4, Math.floor((r.w * r.h) / 5)));
+    const inside = (): { x: number; y: number } | null => {
+      for (let i = 0; i < 60; i++) {
+        const x = this.rng.int(r.x, r.x + r.w - 1);
+        const y = this.rng.int(r.y, r.y + r.h - 1);
+        if (this.tiles[y * W + x] !== FLOOR || this.monsterAt(x, y) || this.itemAt(x, y)) continue;
+        return { x, y };
+      }
+      return null;
+    };
+    for (let i = 0; i < n; i++) {
+      const pos = inside();
+      if (!pos) continue;
+      const m = this.spawnMonster(this.pickEnemy(), pos.x, pos.y);
+      m.dormant = true;
+    }
+    for (let i = 0; i < 3; i++) {
+      const pos = inside();
+      if (pos) this.floorItems.push({ x: pos.x, y: pos.y, item: this.randomItem() });
+    }
+    this.house = { room, triggered: false, revealed: false };
+    return true;
+  }
+
+  /** 鍵のかかった宝部屋を1つ作る。ほかの部屋・階段へ行く道をふさがない部屋だけを選ぶ。 */
+  private setupVault(): boolean {
+    const rooms = this.map.rooms;
+    const cand = this.rng.shuffle(rooms.map((_, i) => i).filter((i) => i !== this.map.startRoom && i !== this.map.farRoom));
+    for (const room of cand) {
+      const r = rooms[room];
+      const doors: { x: number; y: number }[] = [];
+      for (let y = r.y - 1; y <= r.y + r.h; y++) {
+        for (let x = r.x - 1; x <= r.x + r.w; x++) {
+          if (this.roomIndexAt(x, y) === room || this.tile(x, y) !== FLOOR) continue;
+          if ([[0, -1], [1, 0], [0, 1], [-1, 0]].some(([dx, dy]) => this.roomIndexAt(x + dx, y + dy) === room)) doors.push({ x, y });
+        }
+      }
+      if (doors.length === 0) continue;
+      // 扉でふさいでも、開始地点から階段と他の全部屋に行けるか調べる
+      const blocked = new Set(doors.map((d) => d.y * W + d.x));
+      const reach = new Uint8Array(W * H);
+      const stack = [this.map.start.y * W + this.map.start.x];
+      reach[stack[0]] = 1;
+      while (stack.length) {
+        const idx = stack.pop()!;
+        const x = idx % W;
+        const y = (idx / W) | 0;
+        for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
+          const nx = x + dx;
+          const ny = y + dy;
+          const ni = ny * W + nx;
+          if (reach[ni] || blocked.has(ni) || this.roomIndexAt(nx, ny) === room) continue;
+          const t = this.tile(nx, ny);
+          if (t !== FLOOR && t !== STAIRS) continue;
+          reach[ni] = 1;
+          stack.push(ni);
+        }
+      }
+      const st = this.map.stairs;
+      if (st && !reach[st.y * W + st.x]) continue;
+      let ok = true;
+      rooms.forEach((o, i) => {
+        if (i === room) return;
+        if (!reach[Math.floor(o.y + o.h / 2) * W + Math.floor(o.x + o.w / 2)]) ok = false;
+      });
+      if (!ok) continue;
+      // 確定。扉を置き、鍵を到達できる場所へ、宝を部屋の中へ置く。
+      for (const d of doors) this.tiles[d.y * W + d.x] = DOOR;
+      this.vault = { room, doors, opened: false };
+      for (let i = 0; i < 80; i++) {
+        const x = this.rng.int(1, W - 2);
+        const y = this.rng.int(1, H - 2);
+        if (!reach[y * W + x] || this.tiles[y * W + x] !== FLOOR) continue;
+        if (x === this.map.start.x && y === this.map.start.y) continue;
+        if (this.itemAt(x, y)) continue;
+        this.floorItems.push({ x, y, item: this.makeItem('key', 'vault') });
+        break;
+      }
+      const treasures: Item[] = [
+        this.rng.chance(0.5) ? this.makeItem('weapon', 'light') : this.makeItem('shield', 'mithril'),
+        this.makeItem('herb', 'superheal'),
+        this.makeItem('food', 'big'),
+        this.randomItem(this.rng.chance(0.5) ? 'scroll' : 'wand'),
+      ];
+      for (const item of treasures) {
+        for (let i = 0; i < 60; i++) {
+          const x = this.rng.int(r.x, r.x + r.w - 1);
+          const y = this.rng.int(r.y, r.y + r.h - 1);
+          if (this.itemAt(x, y)) continue;
+          this.floorItems.push({ x, y, item });
+          break;
+        }
+      }
+      return true;
+    }
+    return false;
+  }
+
+  private openVault() {
+    const v = this.vault;
+    if (!v || v.opened) return;
+    for (const d of v.doors) this.tiles[d.y * W + d.x] = FLOOR;
+    v.opened = true;
+    this.log('鍵で扉を開けた! 宝部屋が開いた。');
+  }
+
+  /** 部屋に踏み込んだらモンスターハウスの敵が全員目を覚ます */
+  private checkHouse() {
+    const h = this.house;
+    const p = this.player;
+    if (!h || h.triggered || this.roomIndexAt(p.x, p.y) !== h.room) return;
+    h.triggered = true;
+    this.log('モンスターハウスだ! 敵が一斉に目を覚ました!');
+    for (const m of this.monsters) {
+      if (this.roomIndexAt(m.x, m.y) !== h.room) continue;
+      m.dormant = false;
+      m.sleep = 0;
+      m.alerted = true;
+    }
+  }
+
+  private resolveEruptions() {
+    if (this.eruptions.length === 0) return;
+    const p = this.player;
+    const d = eruptionDamage(this.floor);
+    const marks = this.eruptions;
+    this.eruptions = [];
+    for (const e of marks) {
+      this.fx.push({ type: 'eruption', x: e.x, y: e.y });
+      const m = this.monsterAt(e.x, e.y);
+      if (m) this.hitMonster(m, d, `${m.def.name}は噴火に巻き込まれ${d}のダメージ!`);
+      if (p.x === e.x && p.y === e.y && this.status === 'playing') {
+        this.log(`足元が噴火した! ${d}のダメージ!`);
+        this.damagePlayer(d, '噴火');
+      }
+    }
+  }
+
+  private spawnEruptions() {
+    if (this.gimmick !== 'eruption' || this.floorTurn % 5 !== 0) return;
+    const p = this.player;
+    const cand: { x: number; y: number }[] = [];
+    for (let y = Math.max(1, p.y - 7); y <= Math.min(H - 2, p.y + 7); y++) {
+      for (let x = Math.max(1, p.x - 7); x <= Math.min(W - 2, p.x + 7); x++) {
+        if (this.tiles[y * W + x] === FLOOR && this.canSee(x, y)) cand.push({ x, y });
+      }
+    }
+    const n = Math.min(cand.length, 2 + Math.floor(this.floor / 3));
+    this.rng.shuffle(cand);
+    this.eruptions = cand.slice(0, n);
+    if (n > 0) this.log('地面が赤く光った! 次の行動の後に噴火する!');
   }
 
   private populate() {
     const f = this.floor;
     const p = this.player;
+    if (this.gimmick === 'vault' && !this.setupVault()) this.gimmick = 'none';
+    if (this.gimmick === 'house' && !this.setupHouse()) this.gimmick = 'none';
     // 敵
     if (f === MAX_FLOOR) {
       const room = this.map.rooms[this.map.farRoom];
@@ -260,6 +453,7 @@ export class Game {
       if (Math.max(Math.abs(x - p.x), Math.abs(y - p.y)) < minDist) continue;
       if (this.monsterAt(x, y) || this.itemAt(x, y) || this.trapAt(x, y)) continue;
       if (x === p.x && y === p.y) continue;
+      if (this.vault && !this.vault.opened && this.roomIndexAt(x, y) === this.vault.room) continue;
       return { x, y };
     }
     return null;
@@ -289,10 +483,16 @@ export class Game {
   }
 
   /** 斜め移動・斜め攻撃は壁の角をまたげない */
+  /** 壁と、鍵のかかった扉は通れず、視界もさえぎる */
+  solid(x: number, y: number): boolean {
+    const t = this.tile(x, y);
+    return t === WALL || t === DOOR;
+  }
+
   canStep(x: number, y: number, dx: number, dy: number): boolean {
-    if (this.tile(x + dx, y + dy) === WALL) return false;
+    if (this.solid(x + dx, y + dy)) return false;
     if (dx !== 0 && dy !== 0) {
-      if (this.tile(x + dx, y) === WALL || this.tile(x, y + dy) === WALL) return false;
+      if (this.solid(x + dx, y) || this.solid(x, y + dy)) return false;
     }
     return true;
   }
@@ -311,7 +511,7 @@ export class Game {
       if (e2 > -dy) { err -= dy; x += sx; }
       if (e2 < dx) { err += dx; y += sy; }
       if (x === x1 && y === y1) return true;
-      if (this.tile(x, y) === WALL) return false;
+      if (this.solid(x, y)) return false;
     }
     return false;
   }
@@ -358,7 +558,7 @@ export class Game {
   areaAt(x: number, y: number): number {
     const i = this.roomIndexAt(x, y);
     if (i >= 0) return i;
-    if (this.tile(x, y) === WALL) return -1;
+    if (this.solid(x, y)) return -1;
     for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
       const j = this.roomIndexAt(x + dx, y + dy);
       if (j >= 0) return j;
@@ -375,6 +575,7 @@ export class Game {
     const p = this.player;
     const d = Math.max(Math.abs(x - p.x), Math.abs(y - p.y));
     if (d <= 1) return true;
+    if (this.gimmick === 'dark') return d <= 2 && this.los(p.x, p.y, x, y);
     const a = this.areaAt(p.x, p.y);
     if (a < 0 || d > 12) return false;
     const r = this.map.rooms[a];
@@ -386,6 +587,7 @@ export class Game {
   private monsterNotices(m: Monster, d: number): boolean {
     if (d <= 1) return true;
     const p = this.player;
+    if (this.gimmick === 'dark') return d <= 2 && this.los(m.x, m.y, p.x, p.y);
     const a = this.areaAt(p.x, p.y);
     return a >= 0 && a === this.areaAt(m.x, m.y) && this.los(m.x, m.y, p.x, p.y);
   }
@@ -469,6 +671,17 @@ export class Game {
     if (dx === 0 && dy === 0) return false;
     p.dx = Math.sign(dx);
     p.dy = Math.sign(dy);
+    if (this.tile(p.x + p.dx, p.y + p.dy) === DOOR) {
+      if (p.dx !== 0 && p.dy !== 0) return false;
+      const key = p.inv.find((i) => i.kind === 'key');
+      if (!key) {
+        this.log('扉には鍵がかかっている。どこかに鍵があるはずだ。');
+        return false;
+      }
+      this.removeItem(key);
+      this.openVault();
+      return true;
+    }
     if (!this.canStep(p.x, p.y, p.dx, p.dy)) return false;
     const nx = p.x + p.dx;
     const ny = p.y + p.dy;
@@ -571,7 +784,7 @@ export class Game {
     for (let k = 1; k <= 8; k++) {
       const x = p.x + p.dx * k;
       const y = p.y + p.dy * k;
-      if (this.tile(x, y) === WALL) break;
+      if (this.solid(x, y)) break;
       lx = x;
       ly = y;
       const m = this.monsterAt(x, y);
@@ -628,7 +841,7 @@ export class Game {
 
   /** 床にアイテムを置く。同じ場所に先客がいれば近くの空きマスへ */
   private placeItem(it: Item, x: number, y: number) {
-    if (!this.itemAt(x, y) && this.tile(x, y) !== WALL) {
+    if (!this.itemAt(x, y) && !this.solid(x, y)) {
       this.floorItems.push({ x, y, item: it });
       return;
     }
@@ -767,6 +980,9 @@ export class Game {
       case 'weapon':
       case 'shield':
         return this.equip(it);
+      case 'key':
+        this.log('鍵は、鍵のかかった扉に向かって歩くと自動で使われる。');
+        return false;
     }
   }
 
@@ -870,7 +1086,7 @@ export class Game {
     for (let i = 1; i <= range; i++) {
       const x = p.x + p.dx * i;
       const y = p.y + p.dy * i;
-      if (this.tile(x, y) === WALL) return null;
+      if (this.solid(x, y)) return null;
       const m = this.monsterAt(x, y);
       if (m) return m;
     }
@@ -962,6 +1178,10 @@ export class Game {
             t++;
           }
         }
+        if (this.house && !this.house.triggered && !this.house.revealed) {
+          this.house.revealed = true;
+          this.log('敵の気配が密集した部屋がある! 近づかないほうがいい…');
+        }
         p.infoTurns = CLAYD_INFO_TURNS;
         p.abilityCd = CLAYD_CD;
         p.fullness = Math.max(0, p.fullness - 30);
@@ -1016,6 +1236,9 @@ export class Game {
     const p = this.player;
     this.turn++;
     this.floorTurn++;
+    this.resolveEruptions();
+    if (this.status !== 'playing') return;
+    this.checkHouse();
     this.monstersAct();
     if (this.status !== 'playing') return;
     // 満腹度
@@ -1035,6 +1258,7 @@ export class Game {
     }
     if (p.abilityCd > 0) p.abilityCd--;
     if (p.infoTurns > 0) p.infoTurns--;
+    this.spawnEruptions();
     // 新しい敵の出現(居座り防止)
     if (--this.spawnTimer <= 0) {
       this.spawnTimer = 70;
@@ -1090,7 +1314,7 @@ export class Game {
     if (adj) { this.monsterMelee(m); return; }
     // 遠距離攻撃は、同じ部屋にいる間だけ撃てる。通路では隣のマスしか見えない扱いなので撃てない。
     const pa = this.areaAt(p.x, p.y);
-    const lineOk = d >= 2 && pa >= 0 && pa === this.areaAt(m.x, m.y) && this.isAligned(m) && this.los(m.x, m.y, p.x, p.y);
+    const lineOk = d >= 2 && this.gimmick !== 'dark' && pa >= 0 && pa === this.areaAt(m.x, m.y) && this.isAligned(m) && this.los(m.x, m.y, p.x, p.y);
     if ((ai === 'ranged' || ai === 'mage') && lineOk && d <= m.def.range) {
       this.fx.push({ type: 'bolt', x: m.x, y: m.y, x2: p.x, y2: p.y });
       if (ai === 'ranged') this.hitPlayer(m, 1, false, `${m.def.name}の矢が飛んできた!`);

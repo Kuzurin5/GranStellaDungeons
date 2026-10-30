@@ -5,6 +5,8 @@ import { CHAR_IDS, ENEMIES, BOSS, CharId, INV_MAX, MAX_FULLNESS, MAX_FLOOR } fro
 import { FLOOR, H, STAIRS, W, generateFloor } from '../src/core/mapgen';
 import { runBot } from '../src/core/bot';
 import { DiagInput } from '../src/core/diag';
+import { DOOR } from '../src/core/mapgen';
+import { GIMMICKS, eruptionDamage, GimmickId } from '../src/core/data';
 
 /** 何もない広い部屋に敵なし・罠なしで始める */
 function arena(charId: CharId, seed = 1): Game {
@@ -472,5 +474,128 @@ describe('斜め入力', () => {
     const d = new DiagInput();
     d.toggle();
     expect(d.press(1, -1, 0)).toEqual({ dx: 1, dy: -1 });
+  });
+});
+
+/** 指定のギミックがうまく作れた最初のシードのゲームを返す */
+function gimmickGame(gimmick: GimmickId, charId: CharId = 'elwin'): Game {
+  for (let seed = 1; seed <= 60; seed++) {
+    const g = new Game(charId, seed, { startFloor: 5, gimmick });
+    if (g.gimmick === gimmick) return g;
+  }
+  throw new Error(`${gimmick} を作れるシードが見つからない`);
+}
+
+describe('階のギミック', () => {
+  it('1階とボス階にはギミックが出ず、同じギミックは続けて出ない', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const g = new Game('elwin', seed);
+      expect(g.gimmick).toBe('none');
+      let last: GimmickId = 'none';
+      for (let f = 2; f <= MAX_FLOOR; f++) {
+        g.newFloor(f);
+        if (f === MAX_FLOOR) expect(g.gimmick).toBe('none');
+        else if (g.gimmick !== 'none' && last !== 'none') expect(g.gimmick).not.toBe(last);
+        last = g.gimmick;
+      }
+    }
+    expect(GIMMICKS.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('噴火: 予告マスの上にいると次の行動の後にダメージ、よければ無傷。敵も巻き込まれる', () => {
+    const g = arena('elwin');
+    g.gimmick = 'eruption';
+    g.floor = 5;
+    g.eruptions = [{ x: 5, y: 5 }];
+    const hp = g.player.hp;
+    g.act({ t: 'wait' });
+    expect(g.player.hp).toBe(hp - eruptionDamage(5));
+
+    const h = arena('elwin');
+    h.gimmick = 'eruption';
+    h.floor = 5;
+    h.eruptions = [{ x: 5, y: 5 }];
+    h.act({ t: 'move', dx: 1, dy: 0 }); // 予告マスから出る
+    expect(h.player.hp).toBe(h.player.maxHp);
+    expect(h.eruptions).toHaveLength(0);
+
+    const k = arena('elwin');
+    const m = put(k, 'golem', 9, 5, { sleep: 99 });
+    k.eruptions = [{ x: 9, y: 5 }];
+    const mh = m.hp;
+    k.act({ t: 'wait' });
+    expect(m.hp).toBeLessThan(mh);
+  });
+
+  it('噴火: 5ターンごとに、見えているマスに予告が出る', () => {
+    const g = arena('elwin');
+    g.gimmick = 'eruption';
+    g.floor = 5;
+    for (let i = 0; i < 4; i++) g.act({ t: 'wait' });
+    expect(g.eruptions).toHaveLength(0);
+    g.act({ t: 'wait' });
+    expect(g.eruptions.length).toBeGreaterThan(0);
+    for (const e of g.eruptions) expect(g.canSee(e.x, e.y)).toBe(true);
+  });
+
+  it('暗闇: 周り2マスしか見えず、遠距離攻撃も飛んでこない', () => {
+    const g = arena('elwin');
+    g.gimmick = 'dark';
+    expect(g.canSee(7, 5)).toBe(true);
+    expect(g.canSee(8, 5)).toBe(false);
+    put(g, 'archer', 9, 5, { atk: 50 });
+    const hp = g.player.hp;
+    g.act({ t: 'wait' });
+    expect(g.player.hp).toBe(hp);
+  });
+
+  it('モンスターハウス: 踏み込むまで敵は眠り、踏み込むと全員が目を覚ます。鑑定で場所が分かる', () => {
+    const g = gimmickGame('house', 'clayd');
+    const h = g.house!;
+    const r = g.map.rooms[h.room];
+    const inRoom = g.monsters.filter((m) => g.roomIndexAt(m.x, m.y) === h.room);
+    expect(inRoom.length).toBeGreaterThanOrEqual(4);
+    expect(inRoom.every((m) => m.dormant)).toBe(true);
+    expect(h.revealed).toBe(false);
+    g.act({ t: 'ability' });
+    expect(h.revealed).toBe(true);
+    g.monsters = g.monsters.filter((m) => inRoom.includes(m));
+    g.player.x = r.x;
+    g.player.y = r.y;
+    g.act({ t: 'wait' });
+    expect(h.triggered).toBe(true);
+    expect(inRoom.every((m) => !m.dormant && m.alerted)).toBe(true);
+  });
+
+  it('鍵と宝部屋: 鍵が無いと扉は開かず、階段へは扉を通らず行ける。鍵で開けると宝が手に入る', () => {
+    const g = gimmickGame('vault');
+    const v = g.vault!;
+    expect(v.doors.length).toBeGreaterThan(0);
+    for (const d of v.doors) expect(g.tile(d.x, d.y)).toBe(DOOR);
+    const key = g.floorItems.find((f) => f.item.kind === 'key');
+    expect(key).toBeDefined();
+    // 開始地点から階段・鍵まで、扉を通らずに行ける
+    const field = g.distField(g.player.x, g.player.y, 999);
+    expect(field[g.map.stairs!.y * W + g.map.stairs!.x]).toBeGreaterThanOrEqual(0);
+    expect(field[key!.y * W + key!.x]).toBeGreaterThanOrEqual(0);
+    // 宝は部屋の中、扉の向こう側にある
+    const treasure = g.floorItems.filter((f) => g.roomIndexAt(f.x, f.y) === v.room);
+    expect(treasure.length).toBeGreaterThanOrEqual(3);
+    // 鍵なしでは開かない。敵も通れない
+    const d0 = v.doors[0];
+    const dirs = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+    const [dx, dy] = dirs.find(([ax, ay]) => g.roomIndexAt(d0.x + ax, d0.y + ay) !== v.room && g.tile(d0.x + ax, d0.y + ay) === FLOOR)!;
+    g.monsters = [];
+    g.player.x = d0.x + dx;
+    g.player.y = d0.y + dy;
+    expect(g.act({ t: 'move', dx: -dx, dy: -dy })).toBe(false);
+    expect(g.tile(d0.x, d0.y)).toBe(DOOR);
+    expect(g.canStep(g.player.x, g.player.y, -dx, -dy)).toBe(false);
+    // 鍵を持って扉に向かって歩くと開く
+    g.player.inv.push(g.makeItem('key', 'vault'));
+    expect(g.act({ t: 'move', dx: -dx, dy: -dy })).toBe(true);
+    expect(v.opened).toBe(true);
+    for (const d of v.doors) expect(g.tile(d.x, d.y)).toBe(FLOOR);
+    expect(g.player.inv.some((i) => i.kind === 'key')).toBe(false);
   });
 });

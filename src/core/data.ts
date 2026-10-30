@@ -66,7 +66,7 @@ export const CLAYD_CD = 12;
 export const CLAYD_INFO_TURNS = 40;
 
 // ---------------- アイテム ----------------
-export type ItemKind = 'herb' | 'food' | 'scroll' | 'wand' | 'weapon' | 'shield';
+export type ItemKind = 'herb' | 'food' | 'scroll' | 'wand' | 'weapon' | 'shield' | 'key';
 
 export interface Effect {
   kind: ItemKind;
@@ -108,6 +108,8 @@ export const EFFECTS: Effect[] = [
   { kind: 'shield', id: 'iron', name: '鉄の盾', weight: 5, value: 2, desc: '防御力+2' },
   { kind: 'shield', id: 'mithril', name: 'ミスリルの盾', weight: 2, value: 4, desc: '防御力+4' },
   { kind: 'shield', id: 'cursed', name: '呪いの盾', weight: 3, value: 0, desc: '防御力+0。呪われていて外せない' },
+
+  { kind: 'key', id: 'vault', name: '宝部屋の鍵', weight: 0, value: 0, desc: '鍵のかかった扉に向かって歩くと、自動で開く(1回使うと消える)' },
 ];
 
 export function effectOf(kind: ItemKind, id: string): Effect {
@@ -123,6 +125,7 @@ export const ALIAS_POOL: Record<ItemKind, string[]> = {
   wand: ['木の杖', '鉄の杖', '骨の杖', '銅の杖', '銀の杖'],
   weapon: ['さびた剣', '黒い剣', '細い剣', '重い剣', '古い剣'],
   shield: ['丸い盾', '四角い盾', '黒い盾', '古い盾', '大きな盾'],
+  key: [],
 };
 
 export const KIND_WEIGHTS: { kind: ItemKind; weight: number }[] = [
@@ -180,4 +183,36 @@ export const BOSS: EnemyDef = {
 
 export function expToNext(level: number): number {
   return 10 + 9 * (level - 1);
+}
+
+// ---------------- 階のギミック ----------------
+export type GimmickId = 'none' | 'dark' | 'eruption' | 'house' | 'vault';
+
+export interface GimmickDef {
+  id: Exclude<GimmickId, 'none'>;
+  name: string;
+  desc: string;
+  announce: string;
+  min: number;
+  weight: number;
+}
+
+/** 2〜9階のうち、階ごとに多くて1つ。同じギミックは続けて出ない。1階とボス階(10階)は出ない。 */
+export const GIMMICKS: GimmickDef[] = [
+  { id: 'vault', name: '鍵と宝部屋', min: 2, weight: 3,
+    desc: 'どこかに鍵が落ちている。鍵で、鍵のかかった宝部屋の扉を開けられる。',
+    announce: 'この階のどこかに、鍵のかかった宝部屋がある…' },
+  { id: 'dark', name: '暗闇の階', min: 3, weight: 2,
+    desc: '周り2マスしか見えない。遠距離攻撃も飛んでこない。',
+    announce: 'この階は真っ暗だ…。周りがほとんど見えない!' },
+  { id: 'house', name: 'モンスターハウス', min: 3, weight: 3,
+    desc: '敵が眠る部屋がある。踏み込むと全員が目を覚ます。奥には宝がある。',
+    announce: 'この階には、嫌な気配がする…' },
+  { id: 'eruption', name: '噴火の階', min: 4, weight: 3,
+    desc: '赤く光ったマスは次の行動の後に噴火する。敵も巻き込まれる。',
+    announce: 'この階の地面が、ときどき赤く光る…。噴火に注意!' },
+];
+
+export function eruptionDamage(floor: number): number {
+  return 4 + floor;
 }

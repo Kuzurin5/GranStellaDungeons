@@ -166,6 +166,58 @@ async function main() {
   await key('ArrowRight');
   await shot('10c_throw_sleep');
 
+  // ---- 階のギミック ----
+  /** 指定のギミックが作れるシードを探して、その階から始める */
+  async function startGimmick(charNo: number, gimmick: string, floor = 5) {
+    for (let seed = 1; seed <= 40; seed++) {
+      await page.goto(`${base}?seed=${seed}&floor=${floor}&gimmick=${gimmick}`);
+      await page.waitForTimeout(400);
+      await key('Enter');
+      await key(String(charNo));
+      await key('Enter');
+      await page.waitForFunction(() => !!(window as any).__app, null, { timeout: 5000 });
+      if ((await page.evaluate(`window.__app.game.gimmick`)) === gimmick) return;
+    }
+    throw new Error(`${gimmick} を作れるシードがない`);
+  }
+
+  // 20. 噴火の階: 予告マス → 噴火
+  await startGimmick(1, 'eruption');
+  await stage(`g.monsters = [];`);
+  for (let i = 0; i < 5; i++) await page.evaluate(`window.__app.act({ t: 'wait' })`);
+  if ((await page.evaluate(`window.__app.game.eruptions.length`)) === 0) throw new Error('噴火の予告が出なかった');
+  await shot('20_gimmick_eruption_warning');
+  await page.evaluate(`window.__app.act({ t: 'wait' })`);
+  await shot('20b_gimmick_eruption');
+
+  // 21. 暗闇の階
+  await startGimmick(1, 'dark');
+  await stage(`g.monsters = [];`);
+  await key('ArrowRight'); await key('ArrowRight'); await key('ArrowDown');
+  await shot('21_gimmick_dark');
+
+  // 22. モンスターハウス: 鑑定で気配 → 踏み込む
+  await startGimmick(5, 'house');
+  await page.evaluate(`window.__app.act({ t: 'ability' })`);
+  await stage(`const r = g.map.rooms[g.house.room]; const cx = r.x + Math.floor(r.w / 2), cy = r.y + Math.floor(r.h / 2);
+    p.x = r.x - 1 > 0 && g.tiles[cy * 40 + r.x - 1] === 1 ? r.x - 1 : r.x; p.y = cy; for (const m of g.monsters) m.sleep = 0; g.seen.fill(1);`);
+  await shot('22_gimmick_monster_house_sensed');
+  await stage(`const r = g.map.rooms[g.house.room]; p.x = r.x; p.y = r.y; g.seen.fill(1);`);
+  await page.evaluate(`window.__app.act({ t: 'wait' })`);
+  await shot('22b_gimmick_monster_house');
+
+  // 23. 鍵と宝部屋: 扉 → 鍵で開ける
+  await startGimmick(1, 'vault');
+  await stage(`g.monsters = []; const v = g.vault; const d0 = v.doors[0];
+    const dirs = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+    const [dx, dy] = dirs.find(([ax, ay]) => g.roomIndexAt(d0.x + ax, d0.y + ay) !== v.room && g.tiles[(d0.y + ay) * 40 + d0.x + ax] === 1);
+    p.x = d0.x + dx; p.y = d0.y + dy; window.__vd = [-dx, -dy]; g.seen.fill(1);
+    const key = g.floorItems.find(f => f.item.kind === 'key'); if (key) { p.inv.push(key.item); g.floorItems.splice(g.floorItems.indexOf(key), 1); }`);
+  await shot('23_gimmick_vault_door');
+  await page.evaluate(`window.__app.act({ t: 'move', dx: window.__vd[0], dy: window.__vd[1] })`);
+  await stage(`const v = g.vault; const r = g.map.rooms[v.room]; g.seen.fill(1);`);
+  await shot('23b_gimmick_vault_opened');
+
   // 11. ボス戦
   await startRun(1, '&floor=10');
   await stage(`const b = g.monsters.find(m => m.def.id === 'boss'); g.monsters = [b]; b.alerted = true;

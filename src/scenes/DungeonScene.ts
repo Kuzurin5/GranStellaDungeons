@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
-import { BARRAGE_CD, BOSS, CHARS, CLAYD_CD, ENEMIES, INV_MAX, MAX_FLOOR, MAX_FULLNESS, effectOf } from '../core/data';
+import { BARRAGE_CD, BOSS, CHARS, CLAYD_CD, ENEMIES, GIMMICKS, INV_MAX, MAX_FLOOR, MAX_FULLNESS, effectOf } from '../core/data';
 import { Action, Fx, Game, Item } from '../core/game';
 import { DiagInput } from '../core/diag';
-import { STAIRS, W, H, WALL } from '../core/mapgen';
+import { DOOR, STAIRS, W, H, WALL } from '../core/mapgen';
 import { GAME_H, GAME_W, hex, session, txt } from '../ui';
 
 const T = 20;
@@ -11,7 +11,7 @@ const PANEL_X = 810;
 const LOG_Y = MAP_Y + H * T + 8;
 
 const KIND_GLYPH: Record<string, string> = {
-  herb: '🌿', food: '🍙', scroll: '📜', wand: '🪄', weapon: '🗡️', shield: '🛡️',
+  herb: '🌿', food: '🍙', scroll: '📜', wand: '🪄', weapon: '🗡️', shield: '🛡️', key: '🗝️',
 };
 const TRAP_GLYPH: Record<string, string> = { pit: '⬇', mine: '✹', sleepgas: '☁', warp: '✦' };
 
@@ -41,7 +41,7 @@ export class DungeonScene extends Phaser.Scene {
   constructor() { super('Dungeon'); }
 
   create() {
-    this.dg = new Game(session.charId, session.seed, { trackSeen: true, startFloor: session.startFloor });
+    this.dg = new Game(session.charId, session.seed, { trackSeen: true, startFloor: session.startFloor, gimmick: session.gimmick ?? undefined });
     this.ending = false;
     this.menuOpen = false;
     this.menuIdx = 0;
@@ -169,11 +169,30 @@ export class DungeonScene extends Phaser.Scene {
         const t = g.tiles[i];
         let col: number;
         if (t === WALL) col = v ? 0x3a4160 : 0x232842;
+        else if (t === DOOR) col = v ? 0x8a5a2b : 0x5a3b1c;
         else if (t === STAIRS) col = v ? 0xb89b2e : 0x6b5a1c;
         else col = v ? 0x2e3552 : 0x1a1f33;
         this.gfx.fillStyle(col, 1);
         this.gfx.fillRect(x * T, MAP_Y + y * T, T - 1, T - 1);
       }
+    }
+    // 鍵のかかった扉
+    for (const d of g.vault && !g.vault.opened ? g.vault.doors : []) {
+      if (!g.seen[d.y * W + d.x]) continue;
+      this.dyn.add(txt(this, d.x * T + T / 2, MAP_Y + d.y * T + T / 2, '🔒', 13).setOrigin(0.5));
+    }
+    // モンスターハウス(鑑定で気配が分かったとき)
+    if (g.house && g.house.revealed && !g.house.triggered) {
+      const r = g.map.rooms[g.house.room];
+      this.gfx.fillStyle(0xff3355, 0.22).fillRect(r.x * T, MAP_Y + r.y * T, r.w * T, r.h * T);
+      this.gfx.lineStyle(2, 0xff3355, 0.9).strokeRect(r.x * T, MAP_Y + r.y * T, r.w * T, r.h * T);
+      this.dyn.add(txt(this, (r.x + r.w / 2) * T, MAP_Y + (r.y + r.h / 2) * T, '!!', 22, '#ff5577', { fontStyle: 'bold' }).setOrigin(0.5));
+    }
+    // 噴火の予告マス
+    for (const e of g.eruptions) {
+      if (!this.vis[e.y * W + e.x]) continue;
+      this.gfx.fillStyle(0xff3b1f, 0.55).fillRect(e.x * T, MAP_Y + e.y * T, T - 1, T - 1);
+      this.dyn.add(txt(this, e.x * T + T / 2, MAP_Y + e.y * T + T / 2, '!', 15, '#ffffff', { fontStyle: 'bold' }).setOrigin(0.5));
     }
     // 階段
     if (g.map.stairs && g.seen[g.map.stairs.y * W + g.map.stairs.x]) {
@@ -230,6 +249,9 @@ export class DungeonScene extends Phaser.Scene {
         this.gfx.lineStyle(3, 0xffe08a, 0.9);
         this.gfx.lineBetween(cx, cy, f.x2 * T + T / 2, MAP_Y + f.y2 * T + T / 2);
         this.gfx.fillStyle(0xffe08a, 1).fillCircle(f.x2 * T + T / 2, MAP_Y + f.y2 * T + T / 2, 4);
+      } else if (f.type === 'eruption') {
+        this.gfx.fillStyle(0xffa03d, 0.85).fillCircle(cx, cy, T * 0.8);
+        this.gfx.lineStyle(3, 0xff3b1f, 1).strokeCircle(cx, cy, T * 1.1);
       } else if (f.type === 'sweep') {
         this.gfx.lineStyle(4, 0xff4d6d, 0.9).strokeCircle(cx, cy, T * 1.6);
       } else if (f.type === 'fire') {
@@ -301,9 +323,11 @@ export class DungeonScene extends Phaser.Scene {
     else st = '与ダメージの一部でHP回復';
     add(txt(this, PANEL_X, MAP_Y + 170, `${ab}\n${st}`, 13, '#ffe08a', { wordWrap: { width: GAME_W - PANEL_X - 8, useAdvancedWrap: true } }));
     // 操作説明
-    add(txt(this, PANEL_X, MAP_Y + 268,
+    const gm = GIMMICKS.find((x) => x.id === g.gimmick);
+    if (gm) add(txt(this, PANEL_X, MAP_Y + 222, `【この階のギミック】\n${gm.name}: ${gm.desc}`, 12, '#ffb86b', { wordWrap: { width: GAME_W - PANEL_X - 8, useAdvancedWrap: true } }));
+    add(txt(this, PANEL_X, MAP_Y + 300,
       '【操作】\n移動 矢印 / Q W E\n          A   D / Z X C\n斜め Shift で切替→2方向キー\n待機 S   攻撃 Space\n能力 F   持ち物 I\n階段 Enter か .\n\n持ち物 ↑↓ 選択\nEnter 使う/装備  T 投げる\nD 置く  I か Esc で閉じる', 13, '#8b95bd'));
-    add(txt(this, PANEL_X, MAP_Y + 470, `持ち物 ${p.inv.length}/${INV_MAX}`, 14, '#e8eaf2'));
+    add(txt(this, PANEL_X, MAP_Y + 520, `持ち物 ${p.inv.length}/${INV_MAX}`, 14, '#e8eaf2'));
     void BARRAGE_CD; void CLAYD_CD; void MAX_FLOOR;
   }
 

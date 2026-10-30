@@ -34,7 +34,10 @@ export class CharSelectScene extends Phaser.Scene {
   private go() {
     session.charId = CHAR_IDS[this.idx];
     session.seed = newSeed();
-    session.startFloor = Number(new URLSearchParams(location.search).get('floor')) || 1;
+    const q = new URLSearchParams(location.search);
+    session.startFloor = Number(q.get('floor')) || 1;
+    const gm = q.get('gimmick');
+    session.gimmick = gm === 'dark' || gm === 'eruption' || gm === 'house' || gm === 'vault' ? gm : null;
     this.scene.start('Dungeon');
   }
 
