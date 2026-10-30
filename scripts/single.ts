@@ -36,6 +36,7 @@ const body = `<meta name="claude:viewport-fit-sides" content="cover">
   <p class="help">
     <span>ゲーム画面をクリックしてから操作してください(キーボード操作です)</span>
     <span><b>移動</b> 矢印 / QWE・AD・ZXC</span>
+    <span><b>斜め</b> Shiftで斜めモード切替(2方向キーで斜め)</span>
     <span><b>待機</b> S</span>
     <span><b>攻撃</b> Space</span>
     <span><b>固有能力</b> F</span>

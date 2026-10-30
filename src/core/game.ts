@@ -341,6 +341,16 @@ export class Game {
     return f;
   }
 
+  /** その座標がある部屋の番号。通路(部屋の外)なら -1 */
+  roomIndexAt(x: number, y: number): number {
+    const rooms = this.map.rooms;
+    for (let i = 0; i < rooms.length; i++) {
+      const r = rooms[i];
+      if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) return i;
+    }
+    return -1;
+  }
+
   canSee(x: number, y: number): boolean {
     const p = this.player;
     if (Math.max(Math.abs(x - p.x), Math.abs(y - p.y)) > 9) return false;
@@ -1045,7 +1055,9 @@ export class Game {
     const ai = m.def.ai;
     const adj = d === 1 && this.canStep(m.x, m.y, Math.sign(p.x - m.x), Math.sign(p.y - m.y));
     if (adj) { this.monsterMelee(m); return; }
-    const lineOk = d >= 2 && this.isAligned(m) && this.los(m.x, m.y, p.x, p.y);
+    // 遠距離攻撃は、同じ部屋にいる間(通路どうしの場合も)だけ撃てる。部屋を出れば逃げられる。
+    const lineOk = d >= 2 && this.isAligned(m) && this.los(m.x, m.y, p.x, p.y) && this.canSee(m.x, m.y) &&
+      this.roomIndexAt(m.x, m.y) === this.roomIndexAt(p.x, p.y);
     if ((ai === 'ranged' || ai === 'mage') && lineOk && d <= m.def.range) {
       this.fx.push({ type: 'bolt', x: m.x, y: m.y, x2: p.x, y2: p.y });
       if (ai === 'ranged') this.hitPlayer(m, 1, false, `${m.def.name}の矢が飛んできた!`);

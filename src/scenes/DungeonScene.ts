@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { BARRAGE_CD, BOSS, CHARS, CLAYD_CD, ENEMIES, INV_MAX, MAX_FLOOR, MAX_FULLNESS, effectOf } from '../core/data';
 import { Action, Fx, Game, Item } from '../core/game';
+import { DiagInput } from '../core/diag';
 import { STAIRS, W, H, WALL } from '../core/mapgen';
 import { GAME_H, GAME_W, hex, session, txt } from '../ui';
 
@@ -34,6 +35,8 @@ export class DungeonScene extends Phaser.Scene {
   private vis = new Uint8Array(W * H);
   private ending = false;
   private throwIdx: number | null = null;
+  private diag = new DiagInput();
+  private shiftDownAt = 0;
 
   constructor() { super('Dungeon'); }
 
@@ -50,6 +53,14 @@ export class DungeonScene extends Phaser.Scene {
     this.menu = this.add.container(0, 0);
     this.input.keyboard!.addCapture('UP,DOWN,LEFT,RIGHT,SPACE');
     this.input.keyboard!.on('keydown', (ev: KeyboardEvent) => this.onKey(ev));
+    this.input.keyboard!.on('keyup', (ev: KeyboardEvent) => {
+      // Shiftを長押ししていたときは、離したら元のモードに戻す(押している間だけ斜め)
+      if ((ev.code === 'ShiftLeft' || ev.code === 'ShiftRight') && performance.now() - this.shiftDownAt > 400) {
+        this.diag.toggle();
+        this.render();
+      }
+    });
+    this.diag = new DiagInput();
     this.render();
     const w = window as unknown as { __app?: unknown };
     w.__app = {
@@ -91,8 +102,18 @@ export class DungeonScene extends Phaser.Scene {
       this.render();
       return;
     }
+    if (ev.code === 'ShiftLeft' || ev.code === 'ShiftRight') {
+      if (!ev.repeat) { this.shiftDownAt = performance.now(); this.diag.toggle(); this.render(); }
+      return;
+    }
     const dir = KEYS[ev.code];
-    if (dir) { this.step({ t: 'move', dx: dir[0], dy: dir[1] }); return; }
+    if (dir) {
+      const mv = this.diag.press(dir[0], dir[1], performance.now());
+      if (mv) this.step({ t: 'move', dx: mv.dx, dy: mv.dy });
+      else this.render();
+      return;
+    }
+    if (ev.code === 'Escape' && this.diag.pending) { this.diag.clear(); this.render(); return; }
     switch (ev.code) {
       case 'KeyS': case 'Numpad5': this.step({ t: 'wait' }); break;
       case 'Space': this.step({ t: 'attack' }); break;
@@ -103,6 +124,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   step(a: Action) {
+    this.diag.clear();
     this.dg.act(a);
     this.render();
     const g = this.dg;
@@ -248,6 +270,12 @@ export class DungeonScene extends Phaser.Scene {
     add(txt(this, 440, 14, '満腹度', 16, '#ffd29a'));
     this.bar(500, 16, 130, 14, p.fullness / MAX_FULLNESS, p.fullness < 200 ? 0xff7a3d : 0xe0b341);
     add(txt(this, 638, 14, `${p.fullness}/${MAX_FULLNESS}`, 16));
+    const now = performance.now();
+    if (this.diag.mode) {
+      add(txt(this, GAME_W - 10, 4, '斜めモード ON(Shiftで解除)', 14, '#ffb86b', { fontStyle: 'bold' }).setOrigin(1, 0));
+      const hint = this.diag.pendingLabel(now);
+      add(txt(this, GAME_W - 10, 24, hint ?? '方向キーを2つ押すと斜めに進む', 13, hint ? '#ffffff' : '#c9a36b').setOrigin(1, 0));
+    }
     if (p.maxMp > 0) {
       add(txt(this, 760, 14, 'MP', 16, '#c9a0ff'));
       this.bar(790, 16, 70, 14, p.mp / p.maxMp, 0xa78bfa);
@@ -274,7 +302,7 @@ export class DungeonScene extends Phaser.Scene {
     add(txt(this, PANEL_X, MAP_Y + 170, `${ab}\n${st}`, 13, '#ffe08a', { wordWrap: { width: GAME_W - PANEL_X - 8, useAdvancedWrap: true } }));
     // 操作説明
     add(txt(this, PANEL_X, MAP_Y + 268,
-      '【操作】\n移動 矢印 / Q W E\n          A   D / Z X C\n待機 S   攻撃 Space\n能力 F   持ち物 I\n階段 Enter か .\n\n持ち物 ↑↓ 選択\nEnter 使う/装備  T 投げる\nD 置く  I か Esc で閉じる', 13, '#8b95bd'));
+      '【操作】\n移動 矢印 / Q W E\n          A   D / Z X C\n斜め Shift で切替→2方向キー\n待機 S   攻撃 Space\n能力 F   持ち物 I\n階段 Enter か .\n\n持ち物 ↑↓ 選択\nEnter 使う/装備  T 投げる\nD 置く  I か Esc で閉じる', 13, '#8b95bd'));
     add(txt(this, PANEL_X, MAP_Y + 470, `持ち物 ${p.inv.length}/${INV_MAX}`, 14, '#e8eaf2'));
     void BARRAGE_CD; void CLAYD_CD; void MAX_FLOOR;
   }

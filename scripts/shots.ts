@@ -82,6 +82,18 @@ async function main() {
   for (const k of ['ArrowRight', 'ArrowRight', 'ArrowDown', 'ArrowRight', 'KeyE', 'ArrowRight']) await key(k);
   await shot('03_exploring_floor1');
 
+  // 3b. 斜めモード(Shiftで切替。方向キー2つで斜め移動)
+  await startRun(1);
+  await stage(`g.monsters = []; carve(p.x + 1, p.y - 1); carve(p.x + 1, p.y); carve(p.x, p.y - 1);`);
+  const before = await page.evaluate(`({ x: window.__app.game.player.x, y: window.__app.game.player.y })`) as { x: number; y: number };
+  await key('Shift');
+  await key('ArrowUp');
+  await shot('03b_diagonal_mode');
+  await key('ArrowRight');
+  const after = await page.evaluate(`({ x: window.__app.game.player.x, y: window.__app.game.player.y })`) as { x: number; y: number };
+  if (after.x !== before.x + 1 || after.y !== before.y - 1) throw new Error(`斜め移動に失敗: ${JSON.stringify(before)} → ${JSON.stringify(after)}`);
+  await shot('03c_diagonal_moved');
+
   // 4. 戦闘中
   await stage(`g.monsters = []; carve(p.x + 1, p.y); carve(p.x + 2, p.y); carve(p.x - 1, p.y);
     spawn('goblin', p.x + 1, p.y, { hp: 40, maxHp: 40, sleep: 0 }); spawn('slime', p.x - 1, p.y);

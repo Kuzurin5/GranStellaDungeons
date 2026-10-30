@@ -4,6 +4,7 @@ import { Game, Monster } from '../src/core/game';
 import { CHAR_IDS, ENEMIES, BOSS, CharId, INV_MAX, MAX_FULLNESS, MAX_FLOOR } from '../src/core/data';
 import { FLOOR, H, STAIRS, W, generateFloor } from '../src/core/mapgen';
 import { runBot } from '../src/core/bot';
+import { DiagInput } from '../src/core/diag';
 
 /** 何もない広い部屋に敵なし・罠なしで始める */
 function arena(charId: CharId, seed = 1): Game {
@@ -13,6 +14,7 @@ function arena(charId: CharId, seed = 1): Game {
   g.monsters = [];
   g.traps = [];
   g.floorItems = [];
+  g.map.rooms = [{ x: 2, y: 2, w: 28, h: 10 }];
   g.player.x = 5;
   g.player.y = 5;
   g.player.dx = 1;
@@ -355,5 +357,74 @@ describe('ボット', () => {
       expect(r.timeout).toBe(false);
       expect(r.turns).toBeLessThanOrEqual(20000);
     }
+  });
+});
+
+describe('遠距離攻撃は部屋を出れば逃げられる', () => {
+  it('同じ部屋の中では遠距離攻撃を受ける', () => {
+    const g = arena('elwin');
+    g.map.rooms = [{ x: 2, y: 2, w: 10, h: 10 }];
+    put(g, 'archer', 9, 5);
+    const hp = g.player.hp;
+    g.act({ t: 'wait' });
+    expect(g.player.hp).toBeLessThan(hp);
+  });
+
+  it('プレイヤーが部屋から通路に出ると、部屋の中の敵は遠距離攻撃をしてこない', () => {
+    for (const id of ['archer', 'mage']) {
+      const g = arena('elwin');
+      g.map.rooms = [{ x: 2, y: 2, w: 10, h: 10 }];
+      g.player.x = 13; // 部屋(x2〜11)の外
+      g.player.y = 5;
+      put(g, id, 10, 5, { atk: 50 });
+      expect(g.roomIndexAt(13, 5)).toBe(-1);
+      const hp = g.player.hp;
+      g.act({ t: 'wait' });
+      expect(g.player.hp).toBe(hp);
+    }
+  });
+
+  it('通路どうしでは真っ直ぐ撃たれる', () => {
+    const g = arena('elwin');
+    g.map.rooms = [{ x: 2, y: 2, w: 4, h: 4 }];
+    g.player.x = 15;
+    put(g, 'archer', 19, 5);
+    const hp = g.player.hp;
+    g.act({ t: 'wait' });
+    expect(g.player.hp).toBeLessThan(hp);
+  });
+});
+
+describe('斜め入力', () => {
+  it('通常時は1つの方向キーでそのまま動く', () => {
+    const d = new DiagInput();
+    expect(d.press(0, -1, 0)).toEqual({ dx: 0, dy: -1 });
+  });
+
+  it('斜めモードでは、2つの方向キーで斜めに動き、1つだけでは動かない', () => {
+    const d = new DiagInput();
+    d.toggle();
+    expect(d.press(0, -1, 0)).toBeNull();
+    expect(d.press(1, 0, 100)).toEqual({ dx: 1, dy: -1 });
+    expect(d.press(-1, 0, 200)).toBeNull();
+    expect(d.press(0, 1, 300)).toEqual({ dx: -1, dy: 1 });
+  });
+
+  it('同じ軸の2つ目は入れ替え、時間が過ぎた1つ目は無効、モード解除で通常に戻る', () => {
+    const d = new DiagInput(1000);
+    d.toggle();
+    expect(d.press(0, -1, 0)).toBeNull();
+    expect(d.press(0, 1, 100)).toBeNull(); // 同じ軸 → 入れ替え
+    expect(d.press(1, 0, 200)).toEqual({ dx: 1, dy: 1 });
+    expect(d.press(0, -1, 0)).toBeNull();
+    expect(d.press(1, 0, 5000)).toBeNull(); // 時間切れ → 新しい1つ目
+    d.toggle();
+    expect(d.press(1, 0, 6000)).toEqual({ dx: 1, dy: 0 });
+  });
+
+  it('QEZCなどの斜めキーは斜めモード中でもそのまま斜めに動く', () => {
+    const d = new DiagInput();
+    d.toggle();
+    expect(d.press(1, -1, 0)).toEqual({ dx: 1, dy: -1 });
   });
 });
