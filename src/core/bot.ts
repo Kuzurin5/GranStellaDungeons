@@ -48,7 +48,7 @@ export function botAct(g: Game, st: BotState): Action {
     if (h) return { t: 'use', i: p.inv.indexOf(h) };
   }
   // 食事
-  if (p.fullness <= 100) {
+  if (p.fullness <= 250) {
     const f = p.inv.find((i) => i.kind === 'food');
     if (f) return { t: 'use', i: p.inv.indexOf(f) };
   }

@@ -2,7 +2,7 @@
 
 export const MAX_FLOOR = 10;
 export const INV_MAX = 20;
-export const MAX_FULLNESS = 300;
+export const MAX_FULLNESS = 1000;
 
 export type CharId = 'elwin' | 'barrage' | 'sion' | 'fate' | 'clayd';
 export const CHAR_IDS: CharId[] = ['elwin', 'barrage', 'sion', 'fate', 'clayd'];
@@ -83,9 +83,9 @@ export const EFFECTS: Effect[] = [
   { kind: 'herb', id: 'poison', name: '毒草', weight: 4, value: 8, desc: 'HPが8減り、満腹度も下がる' },
   { kind: 'herb', id: 'eye', name: '目薬草', weight: 4, value: 0, desc: 'このフロアの罠が全て見える' },
 
-  { kind: 'food', id: 'onigiri', name: 'おにぎり', weight: 10, value: 150, desc: '満腹度が150回復する' },
-  { kind: 'food', id: 'big', name: '大きなおにぎり', weight: 3, value: 300, desc: '満腹度が300回復する(最大まで)' },
-  { kind: 'food', id: 'jerky', name: '干し肉', weight: 5, value: 100, desc: '満腹度が100回復する' },
+  { kind: 'food', id: 'onigiri', name: 'おにぎり', weight: 10, value: 500, desc: '満腹度が500回復する' },
+  { kind: 'food', id: 'big', name: '大きなおにぎり', weight: 3, value: 1000, desc: '満腹度が1000回復する(最大まで)' },
+  { kind: 'food', id: 'jerky', name: '干し肉', weight: 5, value: 300, desc: '満腹度が300回復する' },
 
   { kind: 'scroll', id: 'map', name: '地図の巻物', weight: 6, value: 0, desc: 'このフロアの地形が全て分かる' },
   { kind: 'scroll', id: 'warp', name: '瞬間移動の巻物', weight: 5, value: 0, desc: 'フロア内のどこかへ飛ぶ' },

@@ -39,7 +39,7 @@ const body = `<meta name="claude:viewport-fit-sides" content="cover">
     <span><b>待機</b> S</span>
     <span><b>攻撃</b> Space</span>
     <span><b>固有能力</b> F</span>
-    <span><b>持ち物</b> I</span>
+    <span><b>持ち物</b> I(閉じるのも I か Esc)</span>
     <span><b>階段</b> Enter</span>
   </p>
 </div>

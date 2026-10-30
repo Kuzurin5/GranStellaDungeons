@@ -680,7 +680,7 @@ export class Game {
         break;
       case 'poison':
         p.hp = Math.max(1, p.hp - value);
-        p.fullness = Math.max(0, p.fullness - 10);
+        p.fullness = Math.max(0, p.fullness - 100);
         this.log(`毒草だ! 体がしびれる…。${tag}`);
         break;
       case 'eye':
@@ -822,7 +822,7 @@ export class Game {
         }
         p.infoTurns = CLAYD_INFO_TURNS;
         p.abilityCd = CLAYD_CD;
-        p.fullness = Math.max(0, p.fullness - 3);
+        p.fullness = Math.max(0, p.fullness - 30);
         this.fx.push({ type: 'identify', x: p.x, y: p.y });
         this.log(`鑑定した。正体が分かった物:${n}個、見つけた罠:${t}個。敵の能力も見える。`);
         return true;
@@ -878,8 +878,8 @@ export class Game {
     if (this.status !== 'playing') return;
     // 満腹度
     p.fullness = Math.max(0, p.fullness - 1);
-    if (p.fullness === 40) this.log('お腹がすいてきた…');
-    if (p.fullness === 15) this.log('お腹がぺこぺこだ!');
+    if (p.fullness === 200) this.log('お腹がすいてきた…');
+    if (p.fullness === 100) this.log('お腹がぺこぺこだ!');
     if (p.fullness === 0) {
       this.damagePlayer(1, '空腹');
       if (this.turn % 5 === 0 && this.status === 'playing') this.log('空腹で体力が減っていく…');
