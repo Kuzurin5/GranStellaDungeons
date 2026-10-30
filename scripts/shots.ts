@@ -131,6 +131,18 @@ async function main() {
   await page.evaluate(`window.__app.scene.menuIdx = 4; window.__app.refresh()`);
   await shot('10_identify_items');
 
+  // 10b. アイテムを投げる(睡眠草で敵を眠らせる)
+  await startRun(1);
+  await stage(`g.monsters = []; for (let i = 1; i <= 6; i++) carve(p.x + i, p.y);
+    spawn('goblin', p.x + 4, p.y, { sleep: 0 }); p.dx = 1; p.dy = 0;
+    p.inv.push(g.makeItem('herb', 'sleep')); g.known.add('herb:sleep');`);
+  await key('KeyI');
+  await page.evaluate(`window.__app.scene.menuIdx = window.__app.game.player.inv.length - 1; window.__app.refresh()`);
+  await key('KeyT');
+  await shot('10b_throw_prompt');
+  await key('ArrowRight');
+  await shot('10c_throw_sleep');
+
   // 11. ボス戦
   await startRun(1, '&floor=10');
   await stage(`const b = g.monsters.find(m => m.def.id === 'boss'); g.monsters = [b]; b.alerted = true;

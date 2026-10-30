@@ -30,6 +30,7 @@ export interface Monster {
   phase: number;
   cd: number;
   stolen: Item | null;
+  deepSleep: number;
 }
 
 export interface Trap {
@@ -77,10 +78,11 @@ export type Action =
   | { t: 'use'; i: number; dx?: number; dy?: number }
   | { t: 'drop'; i: number }
   | { t: 'ability'; dx?: number; dy?: number }
+  | { t: 'throw'; i: number; dx?: number; dy?: number }
   | { t: 'descend' };
 
 export interface Fx {
-  type: 'hit' | 'bolt' | 'sweep' | 'transform' | 'identify' | 'heal' | 'fire' | 'breath';
+  type: 'hit' | 'throw' | 'bolt' | 'sweep' | 'transform' | 'identify' | 'heal' | 'fire' | 'breath';
   x: number;
   y: number;
   x2?: number;
@@ -236,7 +238,7 @@ export class Game {
     const atk = Math.round(def.atk * (def.id === 'boss' ? 1 : 1 + 0.09 * (f - 1)));
     const m: Monster = {
       id: this.nextId++, def, hp, maxHp: hp, atk, armor: def.def + (def.id === 'boss' ? 0 : Math.floor(f / 5)),
-      x, y, sleep: 0, dormant: false, alerted: def.id === 'boss', fleeing: false, phase: 0, cd: 3, stolen: null,
+      x, y, sleep: 0, dormant: false, alerted: def.id === 'boss', fleeing: false, phase: 0, cd: 3, stolen: null, deepSleep: 0,
     };
     this.monsters.push(m);
     return m;
@@ -411,6 +413,7 @@ export class Game {
       case 'use': used = this.doUse(a.i, a.dx, a.dy); break;
       case 'drop': used = this.doDrop(a.i); break;
       case 'ability': used = this.doAbility(a.dx, a.dy); break;
+      case 'throw': used = this.doThrow(a.i, a.dx, a.dy); break;
       case 'descend': used = this.doDescend(); break;
     }
     if (used && this.status === 'playing') this.endTurn();
@@ -509,6 +512,90 @@ export class Game {
     }
     this.newFloor(this.floor + 1);
     return true;
+  }
+
+  /** アイテムを向いた方向へ投げる。当たった敵に効果が出る。 */
+  private doThrow(i: number, dx?: number, dy?: number): boolean {
+    const p = this.player;
+    const it = p.inv[i];
+    if (!it) return false;
+    if (dx || dy) { p.dx = Math.sign(dx ?? 0); p.dy = Math.sign(dy ?? 0); }
+    if (p.dx === 0 && p.dy === 0) return false;
+    p.inv.splice(i, 1);
+    let lx = p.x;
+    let ly = p.y;
+    let target: Monster | null = null;
+    for (let k = 1; k <= 8; k++) {
+      const x = p.x + p.dx * k;
+      const y = p.y + p.dy * k;
+      if (this.tile(x, y) === WALL) break;
+      lx = x;
+      ly = y;
+      const m = this.monsterAt(x, y);
+      if (m) { target = m; break; }
+    }
+    this.fx.push({ type: 'throw', x: p.x, y: p.y, x2: lx, y2: ly });
+    const name = this.itemName(it);
+    if (!target) {
+      this.log(`${name}を投げた。`);
+      this.placeItem(it, lx, ly);
+      return true;
+    }
+    this.log(`${name}を投げて、${target.def.name}に当たった!`);
+    const eff = effectOf(it.kind, it.effect);
+    if (it.kind === 'herb') {
+      this.identify(it);
+      this.thrownHerb(it.effect, target);
+      return true; // 草は砕けて消える
+    }
+    if (it.kind === 'weapon') {
+      const d = Math.max(1, 3 + eff.value - target.armor);
+      this.hitMonster(target, d, `${target.def.name}に${d}のダメージ!`);
+    } else if (it.kind === 'shield') {
+      const d = Math.max(1, 2 - target.armor);
+      this.hitMonster(target, d, `${target.def.name}に${d}のダメージ!`);
+    } else {
+      this.log('しかし、何も起こらなかった。');
+    }
+    this.placeItem(it, target.x, target.y);
+    return true;
+  }
+
+  private thrownHerb(id: string, m: Monster) {
+    switch (id) {
+      case 'heal':
+        m.hp = Math.min(m.maxHp, m.hp + 30);
+        this.log(`${m.def.name}のHPが回復してしまった!`);
+        break;
+      case 'superheal':
+        m.hp = m.maxHp;
+        this.log(`${m.def.name}のHPが全回復してしまった!`);
+        break;
+      case 'poison':
+        this.hitMonster(m, 12, `${m.def.name}は毒を浴びて12のダメージ!`);
+        break;
+      case 'sleep':
+        m.deepSleep = 3;
+        this.log(`${m.def.name}は眠り込んだ!(3ターン、殴っても起きない)`);
+        break;
+      default:
+        this.log('しかし、何も起こらなかった。');
+    }
+  }
+
+  /** 床にアイテムを置く。同じ場所に先客がいれば近くの空きマスへ */
+  private placeItem(it: Item, x: number, y: number) {
+    if (!this.itemAt(x, y) && this.tile(x, y) !== WALL) {
+      this.floorItems.push({ x, y, item: it });
+      return;
+    }
+    for (const [dx, dy] of DIRS) {
+      if (!this.canStep(x, y, dx, dy)) continue;
+      if (this.itemAt(x + dx, y + dy)) continue;
+      this.floorItems.push({ x: x + dx, y: y + dy, item: it });
+      return;
+    }
+    this.log(`${this.itemName(it)}は見えなくなった。`);
   }
 
   private doDrop(i: number): boolean {
@@ -682,6 +769,10 @@ export class Game {
         p.hp = Math.max(1, p.hp - value);
         p.fullness = Math.max(0, p.fullness - 100);
         this.log(`毒草だ! 体がしびれる…。${tag}`);
+        break;
+      case 'sleep':
+        p.sleep = 3;
+        this.log(`睡眠草だ! 眠ってしまう…${tag}`);
         break;
       case 'eye':
         for (const t of this.traps) t.revealed = true;
@@ -917,6 +1008,7 @@ export class Game {
     for (const m of this.monsters.slice()) {
       if (this.status !== 'playing') return;
       if (m.hp <= 0) continue;
+      if (m.deepSleep > 0) { m.deepSleep--; continue; }
       if (m.sleep > 0) { m.sleep--; continue; }
       const d = Math.max(Math.abs(m.x - p.x), Math.abs(m.y - p.y));
       if (m.dormant) {
@@ -963,9 +1055,9 @@ export class Game {
     if (ai === 'boss') {
       m.cd--;
       if (m.cd <= 0 && lineOk && d <= m.def.range) {
-        m.cd = 4;
+        m.cd = 5;
         this.fx.push({ type: 'breath', x: m.x, y: m.y, x2: p.x, y2: p.y });
-        this.hitPlayer(m, 0.9, true, '竜が炎を吐いた!');
+        this.hitPlayer(m, 0.8, true, '竜が炎を吐いた!');
         return;
       }
     }

@@ -78,10 +78,11 @@ export interface Effect {
 }
 
 export const EFFECTS: Effect[] = [
-  { kind: 'herb', id: 'heal', name: '回復草', weight: 10, value: 30, desc: 'HPを30回復する' },
-  { kind: 'herb', id: 'superheal', name: '特効草', weight: 3, value: 0, desc: 'HPが全回復し、最大HPが3増える' },
-  { kind: 'herb', id: 'poison', name: '毒草', weight: 4, value: 8, desc: 'HPが8減り、満腹度も下がる' },
+  { kind: 'herb', id: 'heal', name: '回復草', weight: 10, value: 30, desc: 'HPを30回復する。投げると当てた敵が回復してしまう' },
+  { kind: 'herb', id: 'superheal', name: '特効草', weight: 3, value: 0, desc: 'HPが全回復し、最大HPが3増える。投げると敵が全回復してしまう' },
+  { kind: 'herb', id: 'poison', name: '毒草', weight: 4, value: 8, desc: '食べるとHPが8減り満腹度も下がる。投げると当てた敵に12ダメージ' },
   { kind: 'herb', id: 'eye', name: '目薬草', weight: 4, value: 0, desc: 'このフロアの罠が全て見える' },
+  { kind: 'herb', id: 'sleep', name: '睡眠草', weight: 5, value: 3, desc: '食べると3ターン眠ってしまう。投げると当てた敵が3ターン眠る(殴っても起きない)' },
 
   { kind: 'food', id: 'onigiri', name: 'おにぎり', weight: 10, value: 500, desc: '満腹度が500回復する' },
   { kind: 'food', id: 'big', name: '大きなおにぎり', weight: 3, value: 1000, desc: '満腹度が1000回復する(最大まで)' },
@@ -173,7 +174,7 @@ export const ENEMIES: EnemyDef[] = [
 ];
 
 export const BOSS: EnemyDef = {
-  id: 'boss', name: '試練の竜', glyph: '🐉', color: 0xf43f5e, hp: 170, atk: 15, def: 3, exp: 300,
+  id: 'boss', name: '試練の竜', glyph: '🐉', color: 0xf43f5e, hp: 135, atk: 13, def: 3, exp: 300,
   min: 10, max: 10, ai: 'boss', range: 5, note: '近づくと殴り、離れると炎を吐く',
 };
 

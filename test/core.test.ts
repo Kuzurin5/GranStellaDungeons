@@ -208,6 +208,50 @@ describe('基本ルール', () => {
     }
   });
 
+  it('睡眠草: 食べると3ターン眠り、投げると敵が3ターン眠って殴っても起きない', () => {
+    const g = arena('elwin');
+    const herb = g.makeItem('herb', 'sleep');
+    g.player.inv.push(herb);
+    const t0 = g.turn;
+    g.act({ t: 'use', i: g.player.inv.indexOf(herb) });
+    expect(g.turn - t0).toBeGreaterThanOrEqual(3);
+    expect(g.player.sleep).toBe(0);
+
+    const h = arena('elwin');
+    const m = put(h, 'goblin', 8, 5, { hp: 999, maxHp: 999 });
+    const herb2 = h.makeItem('herb', 'sleep');
+    h.player.inv.push(herb2);
+    h.act({ t: 'throw', i: h.player.inv.indexOf(herb2), dx: 1, dy: 0 });
+    expect(m.deepSleep).toBeGreaterThan(0);
+    expect(h.player.inv).not.toContain(herb2);
+    expect(h.isKnown(herb2)).toBe(true);
+    h.act({ t: 'move', dx: 0, dy: 1 });
+    const x = m.x;
+    h.act({ t: 'wait' });
+    expect(m.x).toBe(x); // まだ眠っている(動かない)
+    h.act({ t: 'wait' });
+    h.act({ t: 'wait' });
+    h.act({ t: 'wait' });
+    expect(m.x).toBeLessThan(x); // 3ターン後に動き出す
+  });
+
+  it('投げる: 毒草は敵にダメージ、外れたアイテムは床に落ちる', () => {
+    const g = arena('elwin');
+    const m = put(g, 'golem', 9, 5, { sleep: 99 });
+    const poison = g.makeItem('herb', 'poison');
+    g.player.inv.push(poison);
+    const hp = m.hp;
+    g.act({ t: 'throw', i: g.player.inv.indexOf(poison), dx: 1, dy: 0 });
+    expect(m.hp).toBeLessThan(hp);
+
+    const h = arena('elwin');
+    const food = h.player.inv.findIndex((i) => i.kind === 'food');
+    const item = h.player.inv[food];
+    h.act({ t: 'throw', i: food, dx: 1, dy: 0 });
+    expect(h.player.inv).not.toContain(item);
+    expect(h.floorItems.some((f) => f.item === item)).toBe(true);
+  });
+
   it('死亡するとゲームオーバーになり、ボスを倒すとクリアになる', () => {
     const g = arena('elwin');
     g.player.hp = 1;

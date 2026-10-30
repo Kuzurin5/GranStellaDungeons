@@ -33,6 +33,7 @@ export class DungeonScene extends Phaser.Scene {
   private menuIdx = 0;
   private vis = new Uint8Array(W * H);
   private ending = false;
+  private throwIdx: number | null = null;
 
   constructor() { super('Dungeon'); }
 
@@ -65,6 +66,13 @@ export class DungeonScene extends Phaser.Scene {
   private onKey(ev: KeyboardEvent) {
     if (this.ending || this.dg.status !== 'playing') return;
     const g = this.dg;
+    if (this.throwIdx !== null) {
+      const idx = this.throwIdx;
+      const d = KEYS[ev.code];
+      if (d) { this.throwIdx = null; this.step({ t: 'throw', i: idx, dx: d[0], dy: d[1] }); return; }
+      if (ev.code === 'Escape' || ev.code === 'KeyT' || ev.code === 'Backspace') { this.throwIdx = null; this.render(); }
+      return;
+    }
     if (this.menuOpen) {
       const n = g.player.inv.length;
       if (ev.code === 'ArrowUp') this.menuIdx = (this.menuIdx + n - 1) % Math.max(1, n);
@@ -75,6 +83,8 @@ export class DungeonScene extends Phaser.Scene {
           this.step({ t: 'use', i: this.menuIdx });
           return;
         }
+      } else if (ev.code === 'KeyT') {
+        if (n > 0) { this.menuOpen = false; this.throwIdx = this.menuIdx; this.render(); return; }
       } else if (ev.code === 'KeyD') {
         if (n > 0) { this.step({ t: 'drop', i: this.menuIdx }); this.menuIdx = Math.min(this.menuIdx, Math.max(0, g.player.inv.length - 1)); return; }
       } else if (ev.code === 'KeyI' || ev.code === 'Escape' || ev.code === 'Backspace') this.menuOpen = false;
@@ -165,7 +175,7 @@ export class DungeonScene extends Phaser.Scene {
       const cy = MAP_Y + m.y * T + T / 2;
       if (m.def.id === 'boss') this.gfx.fillStyle(0x7a1d33, 0.7).fillRect(m.x * T - 2, MAP_Y + m.y * T - 2, T + 3, T + 3);
       this.dyn.add(txt(this, cx, cy, m.def.glyph, m.def.id === 'boss' ? 20 : 15).setOrigin(0.5));
-      if (m.sleep > 0 || m.dormant) this.dyn.add(txt(this, cx + 8, cy - 10, 'z', 11, '#9db4ff').setOrigin(0.5));
+      if (m.sleep > 0 || m.deepSleep > 0 || m.dormant) this.dyn.add(txt(this, cx + 8, cy - 10, 'z', 11, '#9db4ff').setOrigin(0.5));
       if (p.infoTurns > 0) {
         this.dyn.add(txt(this, cx, cy + 13, `${m.hp}/${m.maxHp} 攻${m.atk}`, 10, '#ffe08a', { backgroundColor: '#000000aa' }).setOrigin(0.5));
       }
@@ -194,6 +204,10 @@ export class DungeonScene extends Phaser.Scene {
         const col = f.type === 'breath' ? 0xff7a3d : 0xc9a0ff;
         this.gfx.lineStyle(f.type === 'breath' ? 6 : 4, col, 0.9);
         this.gfx.lineBetween(cx, cy, f.x2 * T + T / 2, MAP_Y + f.y2 * T + T / 2);
+      } else if (f.type === 'throw' && f.x2 !== undefined && f.y2 !== undefined) {
+        this.gfx.lineStyle(3, 0xffe08a, 0.9);
+        this.gfx.lineBetween(cx, cy, f.x2 * T + T / 2, MAP_Y + f.y2 * T + T / 2);
+        this.gfx.fillStyle(0xffe08a, 1).fillCircle(f.x2 * T + T / 2, MAP_Y + f.y2 * T + T / 2, 4);
       } else if (f.type === 'sweep') {
         this.gfx.lineStyle(4, 0xff4d6d, 0.9).strokeCircle(cx, cy, T * 1.6);
       } else if (f.type === 'fire') {
@@ -260,7 +274,7 @@ export class DungeonScene extends Phaser.Scene {
     add(txt(this, PANEL_X, MAP_Y + 170, `${ab}\n${st}`, 13, '#ffe08a', { wordWrap: { width: GAME_W - PANEL_X - 8, useAdvancedWrap: true } }));
     // 操作説明
     add(txt(this, PANEL_X, MAP_Y + 268,
-      '【操作】\n移動 矢印 / Q W E\n          A   D / Z X C\n待機 S   攻撃 Space\n能力 F   持ち物 I\n階段 Enter か .\n\n持ち物 ↑↓ 選択\nEnter 使う/装備  D 置く\nI か Esc で閉じる', 13, '#8b95bd'));
+      '【操作】\n移動 矢印 / Q W E\n          A   D / Z X C\n待機 S   攻撃 Space\n能力 F   持ち物 I\n階段 Enter か .\n\n持ち物 ↑↓ 選択\nEnter 使う/装備  T 投げる\nD 置く  I か Esc で閉じる', 13, '#8b95bd'));
     add(txt(this, PANEL_X, MAP_Y + 470, `持ち物 ${p.inv.length}/${INV_MAX}`, 14, '#e8eaf2'));
     void BARRAGE_CD; void CLAYD_CD; void MAX_FLOOR;
   }
@@ -273,6 +287,13 @@ export class DungeonScene extends Phaser.Scene {
       const a = 0.45 + 0.55 * ((i + 1) / lines.length);
       this.hud.add(txt(this, 10, LOG_Y + i * 20, l, 15, '#dfe4ff').setAlpha(a));
     });
+    if (this.throwIdx !== null) {
+      const it = g.player.inv[this.throwIdx];
+      const by = MAP_Y + H * T - 34;
+      this.gfx2.fillStyle(0x1a2145, 0.95).fillRect(0, by, PANEL_X - 6, 34);
+      this.gfx2.lineStyle(2, 0xffe08a, 1).strokeRect(0, by, PANEL_X - 6, 34);
+      this.menu.add(txt(this, 10, by + 6, `${it ? g.itemName(it) : ''}を投げる方向を選んでください(矢印 / QWEADZXC)   Escでやめる`, 16, '#ffe08a', { fontStyle: 'bold' }));
+    }
   }
 
   private drawMenu() {
@@ -300,7 +321,7 @@ export class DungeonScene extends Phaser.Scene {
     const cur = p.inv[this.menuIdx];
     if (cur) add(txt(this, mx, y + 40 + INV_MAX * 22 + 6, g.itemDesc(cur), 14, '#ffe08a', { wordWrap: { width: 560, useAdvancedWrap: true } }));
     this.gfx2.fillStyle(0x1a2145, 1).fillRect(x - 330 + 2, GAME_H - 58, GAME_W - x + 330 - 4, 56);
-    add(txt(this, mx, GAME_H - 54, '↑ ↓ 選ぶ      Enter 使う・装備する      D 足元に置く', 16, '#c7d0f5'));
+    add(txt(this, mx, GAME_H - 54, '↑↓ 選ぶ   Enter 使う・装備   T 投げる   D 置く', 16, '#c7d0f5'));
     add(txt(this, mx, GAME_H - 30, 'I キー か Esc キー で持ち物を閉じる', 18, '#ffe08a', { fontStyle: 'bold' }));
   }
 }
