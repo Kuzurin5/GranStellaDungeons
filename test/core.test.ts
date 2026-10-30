@@ -41,7 +41,7 @@ describe('乱数とマップ生成', () => {
     expect(runBot('elwin', 5).turns).toBe(runBot('elwin', 5).turns);
   });
 
-  it('全10階で階段(10階はボス部屋)まで道がつながる', () => {
+  it('全20階で階段(最終階はボス部屋)まで道がつながる', () => {
     for (let seed = 1; seed <= 20; seed++) {
       const rng = new Rng(seed);
       for (let f = 1; f <= MAX_FLOOR; f++) {
@@ -59,7 +59,7 @@ describe('乱数とマップ生成', () => {
     expect(H).toBeGreaterThan(0);
   });
 
-  it('10階にボスが1体いる', () => {
+  it('最終階(20階)にボスが1体いる', () => {
     const g = new Game('elwin', 3, { startFloor: MAX_FLOOR });
     expect(g.monsters.filter((m) => m.def.id === 'boss')).toHaveLength(1);
   });
@@ -271,7 +271,7 @@ describe('基本ルール', () => {
   it('敵は8種類以上いて、階層ごとに出る種類が変わる', () => {
     expect(ENEMIES.length).toBeGreaterThanOrEqual(8);
     const early = new Set(ENEMIES.filter((e) => e.min <= 1).map((e) => e.id));
-    const late = new Set(ENEMIES.filter((e) => e.max >= 10).map((e) => e.id));
+    const late = new Set(ENEMIES.filter((e) => e.max >= MAX_FLOOR).map((e) => e.id));
     expect([...early].sort()).not.toEqual([...late].sort());
   });
 });
@@ -480,21 +480,21 @@ describe('斜め入力', () => {
 /** 指定のギミックがうまく作れた最初のシードのゲームを返す */
 function gimmickGame(gimmick: GimmickId, charId: CharId = 'elwin'): Game {
   for (let seed = 1; seed <= 60; seed++) {
-    const g = new Game(charId, seed, { startFloor: 5, gimmick });
+    const g = new Game(charId, seed, { startFloor: 13, gimmick });
     if (g.gimmick === gimmick) return g;
   }
   throw new Error(`${gimmick} を作れるシードが見つからない`);
 }
 
 describe('階のギミック', () => {
-  it('1階とボス階にはギミックが出ず、同じギミックは続けて出ない', () => {
+  it('ギミックは11〜19階だけに出て、同じギミックは続けて出ない', () => {
     for (let seed = 1; seed <= 40; seed++) {
       const g = new Game('elwin', seed);
       expect(g.gimmick).toBe('none');
       let last: GimmickId = 'none';
       for (let f = 2; f <= MAX_FLOOR; f++) {
         g.newFloor(f);
-        if (f === MAX_FLOOR) expect(g.gimmick).toBe('none');
+        if (f <= 10 || f === MAX_FLOOR) expect(g.gimmick).toBe('none');
         else if (g.gimmick !== 'none' && last !== 'none') expect(g.gimmick).not.toBe(last);
         last = g.gimmick;
       }

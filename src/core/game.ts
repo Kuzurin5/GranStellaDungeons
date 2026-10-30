@@ -2,7 +2,7 @@
 import { Rng } from './rng';
 import {
   ALIAS_POOL, BARRAGE_CD, BARRAGE_DURATION, BOSS, CHARS, CLAYD_CD, CLAYD_INFO_TURNS, EFFECTS, ENEMIES,
-  INV_MAX, ItemKind, KIND_WEIGHTS, MAX_FLOOR, MAX_FULLNESS, SION_COST, SION_RANGE, TRAPS, TrapKind,
+  GIMMICK_FROM_FLOOR, INV_MAX, ItemKind, KIND_WEIGHTS, MAX_FLOOR, MAX_FULLNESS, SION_COST, SION_RANGE, TRAPS, TrapKind,
   CharId, EnemyDef, effectOf, expToNext,
 } from './data';
 import { DOOR, FLOOR, FloorMap, H, STAIRS, W, WALL, generateFloor } from './mapgen';
@@ -212,7 +212,7 @@ export class Game {
       this.forcedGimmick = null;
       return g;
     }
-    if (f < 2 || f >= MAX_FLOOR) return 'none';
+    if (f < GIMMICK_FROM_FLOOR || f >= MAX_FLOOR) return 'none';
     const pool = GIMMICKS.filter((g) => f >= g.min && g.id !== this.lastGimmick);
     if (pool.length === 0 || this.rng.chance(0.25)) return 'none'; // ギミックのない階も混ぜる
     return this.rng.weighted(pool).id;
@@ -390,7 +390,7 @@ export class Game {
       const by = room.y + Math.floor(room.h / 2);
       this.spawnMonster(BOSS, bx, by);
     }
-    const count = (f === MAX_FLOOR ? 4 : 4 + Math.floor(f / 2)) + this.rng.int(0, 2);
+    const count = (f === MAX_FLOOR ? 4 : 4 + Math.floor(f / 4)) + this.rng.int(0, 2);
     for (let i = 0; i < count; i++) {
       const pos = this.randomFreeTile(6);
       if (!pos) continue;
@@ -406,7 +406,7 @@ export class Game {
       if (pos) this.floorItems.push({ x: pos.x, y: pos.y, item: this.randomItem() });
     }
     // 罠
-    const nTraps = 3 + Math.floor(f / 3) + this.rng.int(0, 1);
+    const nTraps = 3 + Math.floor(f / 6) + this.rng.int(0, 1);
     for (let i = 0; i < nTraps; i++) {
       const pos = this.randomFreeTile(3);
       if (!pos) continue;
@@ -420,17 +420,17 @@ export class Game {
   private pickEnemy(): EnemyDef {
     const f = this.floor;
     const pool = ENEMIES.filter((e) => f >= e.min && f <= e.max).map((e) => ({
-      e, weight: 1 + (f - e.min) * 0.3,
+      e, weight: 1 + (f - e.min) * 0.15,
     }));
     return this.rng.weighted(pool).e;
   }
 
   spawnMonster(def: EnemyDef, x: number, y: number): Monster {
     const f = this.floor;
-    const hp = Math.round(def.hp * (def.id === 'boss' ? 1 : 1 + 0.12 * (f - 1)));
-    const atk = Math.round(def.atk * (def.id === 'boss' ? 1 : 1 + 0.09 * (f - 1)));
+    const hp = Math.round(def.hp * (def.id === 'boss' ? 1 : 1 + 0.06 * (f - 1)));
+    const atk = Math.round(def.atk * (def.id === 'boss' ? 1 : 1 + 0.045 * (f - 1)));
     const m: Monster = {
-      id: this.nextId++, def, hp, maxHp: hp, atk, armor: def.def + (def.id === 'boss' ? 0 : Math.floor(f / 5)),
+      id: this.nextId++, def, hp, maxHp: hp, atk, armor: def.def + (def.id === 'boss' ? 0 : Math.floor(f / 10)),
       x, y, sleep: 0, dormant: false, alerted: def.id === 'boss', fleeing: false, phase: 0, cd: 3, stolen: null, deepSleep: 0,
     };
     this.monsters.push(m);
@@ -735,7 +735,7 @@ export class Game {
         if (this.status === 'playing') this.newFloor(this.floor + 1);
         break;
       case 'mine': {
-        const d = 12 + this.floor * 2;
+        const d = 12 + this.floor;
         this.log(`地雷が爆発した! ${d}のダメージ!`);
         this.traps.splice(this.traps.indexOf(tr), 1);
         this.damagePlayer(d, '地雷');

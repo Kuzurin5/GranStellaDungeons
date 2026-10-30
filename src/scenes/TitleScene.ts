@@ -11,7 +11,7 @@ export class TitleScene extends Phaser.Scene {
     }
     txt(this, GAME_W / 2, 150, 'GranStellaDungeons', 64, '#9db4ff').setOrigin(0.5);
     txt(this, GAME_W / 2, 225, '— 試練のダンジョン —', 26, '#c7d0f5').setOrigin(0.5);
-    txt(this, GAME_W / 2, 300, '5人の中から1人を選び、全10階の最深部を目指せ。', 20, '#aab3d6').setOrigin(0.5);
+    txt(this, GAME_W / 2, 300, '5人の中から1人を選び、全20階の最深部を目指せ。', 20, '#aab3d6').setOrigin(0.5);
     txt(this, GAME_W / 2, 332, 'やられたら持ち物も成長も失い、最初からやり直し。', 20, '#aab3d6').setOrigin(0.5);
     const start = txt(this, GAME_W / 2, 440, 'Enterキーではじめる', 32, '#ffe08a').setOrigin(0.5);
     this.tweens.add({ targets: start, alpha: 0.35, duration: 800, yoyo: true, repeat: -1 });

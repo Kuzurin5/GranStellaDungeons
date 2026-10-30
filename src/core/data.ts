@@ -1,6 +1,8 @@
 // ゲームデータ(キャラ・アイテム・敵・罠)。数値の理由は DESIGN.md に記録。
 
-export const MAX_FLOOR = 10;
+export const MAX_FLOOR = 20;
+/** この階からギミックが出る(1〜10階は基本のダンジョン) */
+export const GIMMICK_FROM_FLOOR = 11;
 export const INV_MAX = 20;
 export const MAX_FULLNESS = 1000;
 
@@ -34,7 +36,7 @@ export const CHARS: Record<CharId, CharDef> = {
   },
   barrage: {
     id: 'barrage', name: 'バラージ', role: 'バランス型・瞬間火力', glyph: 'バ', color: 0xff8a3d,
-    hp: 27, hpUp: 10, atk: 7.5, atkUp: 1.1, def: 1, mp: 0, mpUp: 0, evasion: 0,
+    hp: 27, hpUp: 11, atk: 7.5, atkUp: 1.2, def: 1, mp: 0, mpUp: 0, evasion: 0,
     abilityName: '変身(Fキー)',
     abilityDesc: '8ターン変身し、攻撃力が上がって2回行動できる。使用後28ターンは再使用不可。',
   },
@@ -166,19 +168,19 @@ export interface EnemyDef {
 }
 
 export const ENEMIES: EnemyDef[] = [
-  { id: 'slime', name: 'スライム', glyph: '🟢', color: 0x4ade80, hp: 8, atk: 4, def: 0, exp: 4, min: 1, max: 4, ai: 'melee', range: 0, note: '単純に追ってくる' },
-  { id: 'bat', name: 'コウモリ', glyph: '🦇', color: 0x8b8ba7, hp: 7, atk: 4, def: 0, exp: 5, min: 1, max: 5, ai: 'erratic', range: 0, note: '不規則に飛び回る' },
-  { id: 'goblin', name: 'ゴブリン', glyph: '👺', color: 0xe05a47, hp: 16, atk: 6, def: 1, exp: 8, min: 2, max: 7, ai: 'melee', range: 0, note: '丈夫な近接型' },
-  { id: 'thief', name: 'どろぼう', glyph: '🦝', color: 0xc9a227, hp: 14, atk: 3, def: 0, exp: 9, min: 3, max: 8, ai: 'thief', range: 0, note: '持ち物を盗んで逃げる' },
-  { id: 'archer', name: '弓兵', glyph: '🏹', color: 0xd4a373, hp: 14, atk: 6, def: 0, exp: 10, min: 4, max: 9, ai: 'ranged', range: 5, note: '直線上から矢を撃つ' },
-  { id: 'moth', name: '眠り蛾', glyph: '🦋', color: 0x7dd3fc, hp: 16, atk: 5, def: 0, exp: 11, min: 5, max: 10, ai: 'moth', range: 0, note: '攻撃で眠らせてくる' },
-  { id: 'mage', name: '魔術師', glyph: '🧙', color: 0xa78bfa, hp: 15, atk: 7, def: 0, exp: 13, min: 6, max: 10, ai: 'mage', range: 4, note: '防御を無視する魔法を撃つ' },
-  { id: 'golem', name: 'ゴーレム', glyph: '🗿', color: 0x9ca3af, hp: 40, atk: 11, def: 3, exp: 18, min: 7, max: 10, ai: 'slow', range: 0, note: '2ターンに1回しか動かないが硬い' },
+  { id: 'slime', name: 'スライム', glyph: '🟢', color: 0x4ade80, hp: 8, atk: 4, def: 0, exp: 4, min: 1, max: 8, ai: 'melee', range: 0, note: '単純に追ってくる' },
+  { id: 'bat', name: 'コウモリ', glyph: '🦇', color: 0x8b8ba7, hp: 7, atk: 4, def: 0, exp: 5, min: 1, max: 10, ai: 'erratic', range: 0, note: '不規則に飛び回る' },
+  { id: 'goblin', name: 'ゴブリン', glyph: '👺', color: 0xe05a47, hp: 16, atk: 6, def: 1, exp: 8, min: 3, max: 14, ai: 'melee', range: 0, note: '丈夫な近接型' },
+  { id: 'thief', name: 'どろぼう', glyph: '🦝', color: 0xc9a227, hp: 14, atk: 3, def: 0, exp: 9, min: 5, max: 16, ai: 'thief', range: 0, note: '持ち物を盗んで逃げる' },
+  { id: 'archer', name: '弓兵', glyph: '🏹', color: 0xd4a373, hp: 14, atk: 6, def: 0, exp: 10, min: 7, max: 18, ai: 'ranged', range: 5, note: '直線上から矢を撃つ' },
+  { id: 'moth', name: '眠り蛾', glyph: '🦋', color: 0x7dd3fc, hp: 16, atk: 5, def: 0, exp: 11, min: 9, max: 20, ai: 'moth', range: 0, note: '攻撃で眠らせてくる' },
+  { id: 'mage', name: '魔術師', glyph: '🧙', color: 0xa78bfa, hp: 15, atk: 7, def: 0, exp: 13, min: 11, max: 20, ai: 'mage', range: 4, note: '防御を無視する魔法を撃つ' },
+  { id: 'golem', name: 'ゴーレム', glyph: '🗿', color: 0x9ca3af, hp: 40, atk: 11, def: 3, exp: 18, min: 13, max: 20, ai: 'slow', range: 0, note: '2ターンに1回しか動かないが硬い' },
 ];
 
 export const BOSS: EnemyDef = {
   id: 'boss', name: '試練の竜', glyph: '🐉', color: 0xf43f5e, hp: 135, atk: 13, def: 3, exp: 300,
-  min: 10, max: 10, ai: 'boss', range: 5, note: '近づくと殴り、離れると炎を吐く',
+  min: 20, max: 20, ai: 'boss', range: 5, note: '近づくと殴り、離れると炎を吐く',
 };
 
 export function expToNext(level: number): number {
@@ -197,22 +199,22 @@ export interface GimmickDef {
   weight: number;
 }
 
-/** 2〜9階のうち、階ごとに多くて1つ。同じギミックは続けて出ない。1階とボス階(10階)は出ない。 */
+/** 11〜19階のうち、階ごとに多くて1つ。同じギミックは続けて出ない。10階までとボス階(20階)は出ない。 */
 export const GIMMICKS: GimmickDef[] = [
-  { id: 'vault', name: '鍵と宝部屋', min: 2, weight: 3,
+  { id: 'vault', name: '鍵と宝部屋', min: 11, weight: 3,
     desc: 'どこかに鍵が落ちている。鍵で、鍵のかかった宝部屋の扉を開けられる。',
     announce: 'この階のどこかに、鍵のかかった宝部屋がある…' },
-  { id: 'dark', name: '暗闇の階', min: 3, weight: 2,
+  { id: 'dark', name: '暗闇の階', min: 13, weight: 2,
     desc: '周り2マスしか見えない。遠距離攻撃も飛んでこない。',
     announce: 'この階は真っ暗だ…。周りがほとんど見えない!' },
-  { id: 'house', name: 'モンスターハウス', min: 3, weight: 3,
+  { id: 'house', name: 'モンスターハウス', min: 12, weight: 3,
     desc: '敵が眠る部屋がある。踏み込むと全員が目を覚ます。奥には宝がある。',
     announce: 'この階には、嫌な気配がする…' },
-  { id: 'eruption', name: '噴火の階', min: 4, weight: 3,
+  { id: 'eruption', name: '噴火の階', min: 14, weight: 3,
     desc: '赤く光ったマスは次の行動の後に噴火する。敵も巻き込まれる。',
     announce: 'この階の地面が、ときどき赤く光る…。噴火に注意!' },
 ];
 
 export function eruptionDamage(floor: number): number {
-  return 4 + floor;
+  return 6 + Math.floor(floor / 2);
 }

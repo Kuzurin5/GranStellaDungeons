@@ -35,7 +35,7 @@ for (const id of CHAR_IDS) {
   if (avgFloor < 4) ok = false;
 }
 
-console.log('| キャラ | 10階クリア率 | 平均到達階 | 平均ターン数 |');
+console.log('| キャラ | 20階クリア率 | 平均到達階 | 平均ターン数 |');
 console.log('|---|---|---|---|');
 for (const r of rows) console.log(r);
 console.log('');

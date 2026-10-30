@@ -168,7 +168,7 @@ async function main() {
 
   // ---- 階のギミック ----
   /** 指定のギミックが作れるシードを探して、その階から始める */
-  async function startGimmick(charNo: number, gimmick: string, floor = 5) {
+  async function startGimmick(charNo: number, gimmick: string, floor = 13) {
     for (let seed = 1; seed <= 40; seed++) {
       await page.goto(`${base}?seed=${seed}&floor=${floor}&gimmick=${gimmick}`);
       await page.waitForTimeout(400);
@@ -219,7 +219,7 @@ async function main() {
   await shot('23b_gimmick_vault_opened');
 
   // 11. ボス戦
-  await startRun(1, '&floor=10');
+  await startRun(1, '&floor=20');
   await stage(`const b = g.monsters.find(m => m.def.id === 'boss'); g.monsters = [b]; b.alerted = true;
     for (let i = 1; i <= 6; i++) carve(b.x - i, b.y);
     p.x = b.x - 4; p.y = b.y; p.dx = 1; p.dy = 0; carve(p.x, p.y);`);
@@ -234,7 +234,7 @@ async function main() {
   await shot('12_gameover');
 
   // 13. クリア
-  await startRun(3, '&floor=10');
+  await startRun(3, '&floor=20');
   await stage(`const b = g.monsters.find(m => m.def.id === 'boss'); g.monsters = [b];
     carve(b.x - 1, b.y); p.x = b.x - 1; p.y = b.y; p.dx = 1; p.dy = 0; b.hp = 1; b.sleep = 99;`);
   await page.evaluate(`window.__app.act({ t: 'move', dx: 1, dy: 0 })`);
