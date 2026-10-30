@@ -1,0 +1,2 @@
+# GranStellaDungeons
+GranStellaシリーズ不思議のダンジョン風ゲームです　
