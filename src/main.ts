@@ -10,6 +10,7 @@ const game = new Phaser.Game({
   width: GAME_W,
   height: GAME_H,
   backgroundColor: '#0b0d14',
+  parent: document.getElementById('game') ?? undefined,
   scene: [TitleScene, CharSelectScene, DungeonScene, GameOverScene, ClearScene],
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
 });

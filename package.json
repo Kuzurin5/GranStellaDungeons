@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
     "bot": "tsx scripts/bot.ts",
-    "shots": "tsx scripts/shots.ts"
+    "shots": "tsx scripts/shots.ts",
+    "single": "tsx scripts/single.ts"
   },
   "dependencies": {
     "phaser": "^3.90.0"
