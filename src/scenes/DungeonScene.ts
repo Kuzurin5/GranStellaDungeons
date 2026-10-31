@@ -333,13 +333,17 @@ export class DungeonScene extends Phaser.Scene {
     const py = this.sy(p.y) + T / 2;
     alive.add('player');
     if (p.transform > 0) this.gfx.fillStyle(0xffd24d, 0.45).fillCircle(px, py, T * 0.85);
-    const placedP = this.placeUnit('player', `chars/${p.charId}_{f}`, [`token/${p.charId}`], p.x, p.y, p.dx, p.dy, p.sleep > 0 ? 0x8899cc : null);
+    const placedP = this.placeUnit('player', `chars/${p.charId}_{f}`, [], p.x, p.y, p.dx, p.dy, p.sleep > 0 ? 0x8899cc : null);
     if (!placedP) {
+      // 味方のコマ: イメージカラーの丸 + 名前の1文字 + 向いている方向の点。色が明るいときは文字と点を暗くする
+      const lum = (0.299 * ((c.color >> 16) & 255) + 0.587 * ((c.color >> 8) & 255) + 0.114 * (c.color & 255)) / 255;
+      const light = lum >= 0.5;
       this.gfx.fillStyle(c.color, 1).fillCircle(px, py, T * 0.46);
-      this.dyn.add(txt(this, px, py, c.glyph, 26, '#0b0d14', { fontStyle: 'bold' }).setOrigin(0.5));
-    }
-    // 向いている方向(攻撃・杖・投げる向き)の矢印
-    if (p.dx !== 0 || p.dy !== 0) {
+      this.gfx.lineStyle(2, 0x000000, 0.55).strokeCircle(px, py, T * 0.46);
+      this.gfx.fillStyle(light ? 0x20263d : 0xffffff, 1).fillCircle(px + p.dx * 16, py + p.dy * 16, 5);
+      this.dyn.add(txt(this, px, py, c.glyph, 26, light ? '#0b0d14' : '#ffffff', { fontStyle: 'bold' }).setOrigin(0.5));
+    } else if (p.dx !== 0 || p.dy !== 0) {
+      // 全身絵のときは、向いている方向(攻撃・杖・投げる向き)を矢印で示す
       const ax = px + p.dx * (T * 0.62);
       const ay = py + p.dy * (T * 0.62);
       const ang = Math.atan2(p.dy, p.dx);

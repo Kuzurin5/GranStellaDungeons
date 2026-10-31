@@ -3,7 +3,7 @@
 絵は `public/art/` に画像(PNG)を置くと自動で差し替わる。大きさ・名前・作り方は **ASSET_SPEC.md** を参照。
 
 - 仮の絵(絵文字と図形)の作成: `npm run art:placeholders`(既にあるファイルは上書きしない。`-- --force` で作り直す。キャラの顔アイコンは本物があるので上書きしない)
-- 味方キャラは、顔アイコン(`chars/<id>_portrait.png`)から「顔のコマ」を自動で作って表示する
+- 顔アイコン(`chars/<id>_portrait.png`)は、キャラ選択と右上の表示に使う(丸い枠は自動で作る)。マス目の上のコマは、イメージカラーの丸+1文字
 - 絵の一覧の更新: `npm run art:index`(`npm run build` と `npm run dev` が自動で実行する)
 - 1ファイルで遊べる版(絵を埋め込む): `npm run single` → `dist-single/play.html`
 - 絵が無いものは、従来の図形・絵文字で表示される
