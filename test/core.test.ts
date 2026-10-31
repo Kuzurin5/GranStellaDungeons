@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Rng } from '../src/core/rng';
 import { Game, Monster } from '../src/core/game';
-import { CHAR_IDS, ENEMIES, BOSS, CharId, INV_MAX, MAX_FULLNESS, MAX_FLOOR } from '../src/core/data';
+import { CHARS, CHAR_IDS, ENEMIES, BOSS, CharId, INV_MAX, MAX_FULLNESS, MAX_FLOOR } from '../src/core/data';
 import { FLOOR, H, STAIRS, W, generateFloor } from '../src/core/mapgen';
 import { runBot } from '../src/core/bot';
 import { DiagInput } from '../src/core/diag';
@@ -626,5 +626,26 @@ describe('画面まわり(スクロールと絵の向き)', () => {
     expect(themeOf(6).id).toBe('ruins');
     expect(themeOf(11).id).toBe('abyss');
     expect(themeOf(20).id).toBe('sanctum');
+  });
+});
+
+describe('キャラのイメージカラー', () => {
+  const rgb = (n: number) => [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  it('エルウィン=赤、バラージ=白(グレー)、フェイト=青、シオン=紫、クレイド=茶', () => {
+    const [er, eg, eb] = rgb(CHARS.elwin.color);
+    expect(er).toBeGreaterThan(eg * 2);
+    expect(er).toBeGreaterThan(eb * 2);
+    const [br, bg, bb] = rgb(CHARS.barrage.color);
+    expect(Math.min(br, bg, bb)).toBeGreaterThan(170);
+    expect(Math.max(br, bg, bb) - Math.min(br, bg, bb)).toBeLessThan(40);
+    const [fr, fg, fb] = rgb(CHARS.fate.color);
+    expect(fb).toBeGreaterThan(fr * 1.5);
+    expect(fb).toBeGreaterThan(fg);
+    const [sr, sg, sb] = rgb(CHARS.sion.color);
+    expect(sb).toBeGreaterThan(sg);
+    expect(sr).toBeGreaterThan(sg);
+    const [cr, cg, cb] = rgb(CHARS.clayd.color);
+    expect(cr).toBeGreaterThan(cg);
+    expect(cg).toBeGreaterThan(cb);
   });
 });

@@ -1,5 +1,5 @@
 // 仮の絵(絵文字・図形)を public/art/ に書き出す。本物の絵ができたら、同じファイル名で上書きする。
-// 使い方: npm run art:placeholders   (既にあるファイルは上書きしない。--force で全部作り直す)
+// 使い方: npm run art:placeholders   (既にあるファイルは上書きしない。--force で作り直す。顔アイコンは本物があるので --force でも上書きしない)
 import { chromium } from 'playwright';
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -20,17 +20,14 @@ function findChromium(): string | undefined {
   return undefined;
 }
 
-interface Job { path: string; w: number; h: number; draw: string }
+interface Job { path: string; w: number; h: number; draw: string; keep?: boolean }
 const jobs: Job[] = [];
 const hex = (n: number) => '#' + n.toString(16).padStart(6, '0');
 
-// 味方: 色付きの人形 + 名前の1文字。向きで顔・後ろ姿・横顔を変える
+// 味方: マップ上は顔アイコンの「コマ」で表示するので、仮の絵は顔アイコンだけ(本物があれば上書きしない)
 for (const id of CHAR_IDS) {
   const c = CHARS[id];
-  for (const f of ['down', 'up', 'side']) {
-    jobs.push({ path: `chars/${id}_${f}.png`, w: 96, h: 96, draw: `unit(ctx, '${hex(c.color)}', '${c.glyph}', '${f}')` });
-  }
-  jobs.push({ path: `chars/${id}_portrait.png`, w: 256, h: 256, draw: `portrait(ctx, '${hex(c.color)}', '${c.glyph}')` });
+  jobs.push({ path: `chars/${id}_portrait.png`, w: 240, h: 240, draw: `portrait(ctx, '${hex(c.color)}', '${c.glyph}')`, keep: true });
 }
 // 敵: 絵文字
 for (const e of [...ENEMIES, BOSS]) {
@@ -69,8 +66,8 @@ function unit(ctx, color, glyph, f) {
   if (f !== 'up') ctx.fillText(glyph, 48, 64);
 }
 function portrait(ctx, color, glyph) {
-  ctx.fillStyle = color; ctx.beginPath(); ctx.arc(128, 128, 120, 0, 7); ctx.fill();
-  ctx.fillStyle = '#0b0d14'; ctx.font = 'bold 140px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(glyph, 128, 136);
+  ctx.fillStyle = color; ctx.beginPath(); ctx.arc(120, 120, 112, 0, 7); ctx.fill();
+  ctx.fillStyle = '#0b0d14'; ctx.font = 'bold 130px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(glyph, 120, 128);
 }
 function emoji(ctx, g, size) {
   ctx.font = Math.floor(size * 0.78) + 'px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(g, size / 2, size / 2 + size * 0.04);
@@ -111,7 +108,7 @@ await page.addScriptTag({ content: PAGE_JS });
 let made = 0;
 for (const job of jobs) {
   const dest = join(OUT, job.path);
-  if (existsSync(dest) && !force) continue;
+  if (existsSync(dest) && (!force || job.keep)) continue;
   mkdirSync(dirname(dest), { recursive: true });
   const b64 = await page.evaluate((j) => (window as unknown as { __draw: (j: Job) => string }).__draw(j), job);
   writeFileSync(dest, Buffer.from(b64, 'base64'));

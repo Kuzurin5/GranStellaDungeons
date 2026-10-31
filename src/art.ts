@@ -54,3 +54,38 @@ export function addCoverBg(scene: Phaser.Scene, key: string, w: number, h: numbe
   img.setScale(s);
   return true;
 }
+
+/**
+ * キャラの顔アイコン(chars/<id>_portrait)から、マップに出す「コマ」の絵(token/<id>)を作る。
+ * 丸く切り抜いて、イメージカラーの枠で囲む。キャラ専用の全身絵(chars/<id>_down など)があればそちらが優先される。
+ */
+export function makeTokens(scene: Phaser.Scene, colors: Record<string, number>) {
+  const SIZE = ART_TILE;
+  for (const id of Object.keys(colors)) {
+    const src = `chars/${id}_portrait`;
+    const key = `token/${id}`;
+    if (!scene.textures.exists(src) || scene.textures.exists(key)) continue;
+    const img = scene.textures.get(src).getSourceImage() as CanvasImageSource & { width: number; height: number };
+    const tex = scene.textures.createCanvas(key, SIZE, SIZE);
+    if (!tex) continue;
+    const ctx = tex.getContext();
+    const hex = '#' + colors[id].toString(16).padStart(6, '0');
+    const c = SIZE / 2;
+    ctx.fillStyle = 'rgba(0,0,0,0.30)';
+    ctx.beginPath(); ctx.ellipse(c, SIZE - 8, 36, 8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.save();
+    ctx.beginPath(); ctx.arc(c, c - 2, c - 8, 0, Math.PI * 2); ctx.clip();
+    ctx.fillStyle = '#20263d';
+    ctx.fillRect(0, 0, SIZE, SIZE);
+    const sw = img.width * 0.94;
+    ctx.drawImage(img, img.width * 0.03, 0, sw, sw, 6, 4, SIZE - 12, SIZE - 12);
+    ctx.restore();
+    ctx.lineWidth = 7;
+    ctx.strokeStyle = hex;
+    ctx.beginPath(); ctx.arc(c, c - 2, c - 11, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(0,0,0,0.65)';
+    ctx.beginPath(); ctx.arc(c, c - 2, c - 7, 0, Math.PI * 2); ctx.stroke();
+    tex.refresh();
+  }
+}

@@ -29,13 +29,13 @@ export interface CharDef {
 
 export const CHARS: Record<CharId, CharDef> = {
   elwin: {
-    id: 'elwin', name: 'エルウィン', role: '持久型の近接', glyph: 'エ', color: 0x4da3ff,
+    id: 'elwin', name: 'エルウィン', role: '持久型の近接', glyph: 'エ', color: 0xe5483f,
     hp: 30, hpUp: 10, atk: 6.5, atkUp: 1.0, def: 1, mp: 0, mpUp: 0, evasion: 0,
     abilityName: '不屈の剣(常時)',
     abilityDesc: '与えたダメージの一部がHPとして回復する。殴り続けるほど崩れにくい。',
   },
   barrage: {
-    id: 'barrage', name: 'バラージ', role: 'バランス型・瞬間火力', glyph: 'バ', color: 0xff8a3d,
+    id: 'barrage', name: 'バラージ', role: 'バランス型・瞬間火力', glyph: 'バ', color: 0xd3d8e3,
     hp: 27, hpUp: 11, atk: 7.5, atkUp: 1.2, def: 1, mp: 0, mpUp: 0, evasion: 0,
     abilityName: '変身(Fキー)',
     abilityDesc: '8ターン変身し、攻撃力が上がって2回行動できる。使用後28ターンは再使用不可。',
@@ -47,13 +47,13 @@ export const CHARS: Record<CharId, CharDef> = {
     abilityDesc: '向いている方向の直線上(7マス)の敵に高威力の魔法を撃つ。MPを3使う。打たれ弱い。',
   },
   fate: {
-    id: 'fate', name: 'フェイト', role: 'スピード型の前衛・ハイリスク', glyph: 'フ', color: 0xff4d6d,
+    id: 'fate', name: 'フェイト', role: 'スピード型の前衛・ハイリスク', glyph: 'フ', color: 0x3d82ff,
     hp: 25, hpUp: 12, atk: 9, atkUp: 1.2, def: 0, mp: 0, mpUp: 0, evasion: 0.2,
     abilityName: '血風(Fキー)',
     abilityDesc: 'HPを最大HPの1割ほど払い、周囲8マスの敵をまとめて斬る。素早く、攻撃を20%かわす。',
   },
   clayd: {
-    id: 'clayd', name: 'クレイド', role: '情報・補助', glyph: 'ク', color: 0x4dd6a8,
+    id: 'clayd', name: 'クレイド', role: '情報・補助', glyph: 'ク', color: 0xa8743f,
     hp: 26, hpUp: 12, atk: 8, atkUp: 1.2, def: 1, mp: 0, mpUp: 0, evasion: 0,
     abilityName: '鑑定(Fキー)',
     abilityDesc: '持ち物の未鑑定品を全て鑑定し、周囲の罠を見つけ、敵の能力を40ターン表示する。使用後12ターンは再使用不可。',

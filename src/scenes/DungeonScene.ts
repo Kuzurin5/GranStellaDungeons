@@ -239,9 +239,10 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   /** キャラ・敵の絵を、動きがなめらかになるように使い回す。絵が無いものは false を返す(従来の図形で描く)。 */
-  private placeUnit(id: string, keys: string[], x: number, y: number, dx: number, dy: number, tint: number | null, scale = 1): boolean {
+  private placeUnit(id: string, pattern: string, fallbacks: string[], x: number, y: number, dx: number, dy: number, tint: number | null, scale = 1): boolean {
     const f = facingOf(dx, dy);
-    const key = firstArt(this, keys.map((k) => k.replace('{f}', f.facing)).concat(keys.map((k) => k.replace('{f}', 'down'))));
+    // 向きに合う絵 → 正面の絵 → 代わりの絵(顔のコマなど)の順に探す
+    const key = firstArt(this, [pattern.replace('{f}', f.facing), pattern.replace('{f}', 'down'), ...fallbacks]);
     if (!key) return false;
     const tx = this.sx(x) + T / 2;
     const ty = this.sy(y) + T - 2;
@@ -265,7 +266,7 @@ export class DungeonScene extends Phaser.Scene {
     u.tint = tint;
     u.img.setTexture(key);
     u.img.setScale(ART_SCALE * scale);
-    u.img.setFlipX(f.flip);
+    u.img.setFlipX(f.flip && !key.startsWith('token/')); // 顔のコマは左右反転しない
     if (tint === null) u.img.clearTint();
     else u.img.setTint(tint);
     return true;
@@ -316,7 +317,7 @@ export class DungeonScene extends Phaser.Scene {
       const id = `m${m.id}`;
       alive.add(id);
       const boss = m.def.id === 'boss';
-      const placed = this.placeUnit(id, [`enemies/${m.def.id}_{f}`], m.x, m.y, Math.sign(p.x - m.x), Math.sign(p.y - m.y), asleep ? 0x8899cc : null);
+      const placed = this.placeUnit(id, `enemies/${m.def.id}_{f}`, [], m.x, m.y, Math.sign(p.x - m.x), Math.sign(p.y - m.y), asleep ? 0x8899cc : null);
       if (!placed) {
         if (boss) this.gfx.fillStyle(0x7a1d33, 0.7).fillRect(this.sx(m.x) - 3, this.sy(m.y) - 3, T + 5, T + 5);
         this.dyn.add(txt(this, cx, cy, m.def.glyph, boss ? 42 : 32).setOrigin(0.5));
@@ -332,11 +333,22 @@ export class DungeonScene extends Phaser.Scene {
     const py = this.sy(p.y) + T / 2;
     alive.add('player');
     if (p.transform > 0) this.gfx.fillStyle(0xffd24d, 0.45).fillCircle(px, py, T * 0.85);
-    const placedP = this.placeUnit('player', [`chars/${p.charId}_{f}`], p.x, p.y, p.dx, p.dy, p.sleep > 0 ? 0x8899cc : null);
+    const placedP = this.placeUnit('player', `chars/${p.charId}_{f}`, [`token/${p.charId}`], p.x, p.y, p.dx, p.dy, p.sleep > 0 ? 0x8899cc : null);
     if (!placedP) {
       this.gfx.fillStyle(c.color, 1).fillCircle(px, py, T * 0.46);
-      this.gfx.fillStyle(0xffffff, 1).fillCircle(px + p.dx * 16, py + p.dy * 16, 5);
       this.dyn.add(txt(this, px, py, c.glyph, 26, '#0b0d14', { fontStyle: 'bold' }).setOrigin(0.5));
+    }
+    // 向いている方向(攻撃・杖・投げる向き)の矢印
+    if (p.dx !== 0 || p.dy !== 0) {
+      const ax = px + p.dx * (T * 0.62);
+      const ay = py + p.dy * (T * 0.62);
+      const ang = Math.atan2(p.dy, p.dx);
+      const tri = (r: number, off: number) => [ax + Math.cos(ang + off) * r, ay + Math.sin(ang + off) * r] as const;
+      const [x1, y1] = tri(8, 0);
+      const [x2, y2] = tri(7, 2.5);
+      const [x3, y3] = tri(7, -2.5);
+      this.gfx.fillStyle(0xffffff, 0.95).fillTriangle(x1, y1, x2, y2, x3, y3);
+      this.gfx.lineStyle(1.5, 0x000000, 0.7).strokeTriangle(x1, y1, x2, y2, x3, y3);
     }
     if (p.sleep > 0) this.dyn.add(txt(this, px + 16, py - 24, 'Zzz', 18, '#9db4ff').setOrigin(0.5));
     // 画面から消えた敵の絵を片づける
@@ -462,8 +474,12 @@ export class DungeonScene extends Phaser.Scene {
 
     // 右パネル
     this.gfx.fillStyle(0x121626, 1).fillRect(PANEL_X - 6, MAP_Y, GAME_W - PANEL_X + 6, GAME_H - MAP_Y);
-    this.gfx.fillStyle(c.color, 1).fillCircle(PANEL_X + 24, MAP_Y + 28, 18);
-    add(txt(this, PANEL_X + 24, MAP_Y + 28, c.glyph, 20, '#0b0d14', { fontStyle: 'bold' }).setOrigin(0.5));
+    if (this.textures.exists(`token/${p.charId}`)) {
+      add(this.add.image(PANEL_X + 24, MAP_Y + 28, `token/${p.charId}`).setDisplaySize(44, 44));
+    } else {
+      this.gfx.fillStyle(c.color, 1).fillCircle(PANEL_X + 24, MAP_Y + 28, 18);
+      add(txt(this, PANEL_X + 24, MAP_Y + 28, c.glyph, 20, '#0b0d14', { fontStyle: 'bold' }).setOrigin(0.5));
+    }
     add(txt(this, PANEL_X + 52, MAP_Y + 8, c.name, 20, hex(c.color)));
     add(txt(this, PANEL_X + 52, MAP_Y + 32, c.role, 12, '#8b95bd'));
     const wp = p.weapon ? effectOf('weapon', p.weapon.effect).name : 'なし';

@@ -54,8 +54,8 @@ export class CharSelectScene extends Phaser.Scene {
       const sel = i === this.idx;
       const bg = this.add.rectangle(x, 80, cw, 530, sel ? 0x1c2340 : 0x121626).setOrigin(0, 0);
       bg.setStrokeStyle(sel ? 3 : 1, sel ? c.color : 0x2a3150);
-      const hasPortrait = this.textures.exists(`chars/${id}_portrait`);
-      const badge = hasPortrait ? this.add.image(x + cw / 2, 140, `chars/${id}_portrait`).setDisplaySize(96, 96) : this.add.circle(x + cw / 2, 140, 40, c.color);
+      const hasPortrait = this.textures.exists(`token/${id}`);
+      const badge = hasPortrait ? this.add.image(x + cw / 2, 140, `token/${id}`).setDisplaySize(112, 112) : this.add.circle(x + cw / 2, 140, 40, c.color);
       const g = hasPortrait ? this.add.container(0, 0) : txt(this, x + cw / 2, 140, c.glyph, 40, '#0b0d14', { fontStyle: 'bold' }).setOrigin(0.5);
       const name = txt(this, x + cw / 2, 205, c.name, 26, hex(c.color)).setOrigin(0.5);
       const role = txt(this, x + cw / 2, 240, c.role, 15, '#c7d0f5', { wordWrap: { width: cw - 16, useAdvancedWrap: true }, align: 'center' }).setOrigin(0.5, 0);
