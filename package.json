@@ -1,0 +1,27 @@
+{
+  "name": "gran-stella-dungeons",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx scripts/art-index.ts && vite",
+    "build": "tsx scripts/art-index.ts && tsc --noEmit && vite build",
+    "test": "vitest run",
+    "bot": "tsx scripts/bot.ts",
+    "shots": "tsx scripts/shots.ts",
+    "single": "tsx scripts/single.ts",
+    "art:index": "tsx scripts/art-index.ts",
+    "art:placeholders": "tsx scripts/placeholders.ts"
+  },
+  "dependencies": {
+    "phaser": "^3.90.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "playwright": "^1.64.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}
