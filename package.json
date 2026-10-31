@@ -4,12 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "dev": "tsx scripts/art-index.ts && vite",
+    "build": "tsx scripts/art-index.ts && tsc --noEmit && vite build",
     "test": "vitest run",
     "bot": "tsx scripts/bot.ts",
     "shots": "tsx scripts/shots.ts",
-    "single": "tsx scripts/single.ts"
+    "single": "tsx scripts/single.ts",
+    "art:index": "tsx scripts/art-index.ts",
+    "art:placeholders": "tsx scripts/placeholders.ts"
   },
   "dependencies": {
     "phaser": "^3.90.0"

@@ -6,6 +6,7 @@ import { FLOOR, H, STAIRS, W, generateFloor } from '../src/core/mapgen';
 import { runBot } from '../src/core/bot';
 import { DiagInput } from '../src/core/diag';
 import { DOOR } from '../src/core/mapgen';
+import { cameraOrigin, facingOf, themeOf, THEMES } from '../src/view';
 import { GIMMICKS, eruptionDamage, GimmickId } from '../src/core/data';
 
 /** 何もない広い部屋に敵なし・罠なしで始める */
@@ -597,5 +598,33 @@ describe('階のギミック', () => {
     expect(v.opened).toBe(true);
     for (const d of v.doors) expect(g.tile(d.x, d.y)).toBe(FLOOR);
     expect(g.player.inv.some((i) => i.kind === 'key')).toBe(false);
+  });
+});
+
+describe('画面まわり(スクロールと絵の向き)', () => {
+  it('カメラはプレイヤーを中央に置き、マップの端では止まる', () => {
+    expect(cameraOrigin(20, 12, 16, 10, 40, 24)).toEqual({ x: 12, y: 7 });
+    expect(cameraOrigin(1, 1, 16, 10, 40, 24)).toEqual({ x: 0, y: 0 });
+    expect(cameraOrigin(39, 23, 16, 10, 40, 24)).toEqual({ x: 24, y: 14 });
+    const c = cameraOrigin(5, 5, 16, 10, 40, 24);
+    expect(5 - c.x).toBeGreaterThanOrEqual(0);
+    expect(5 - c.x).toBeLessThan(16);
+  });
+
+  it('向きから、使う絵(正面・背面・横向きと左右反転)が決まる', () => {
+    expect(facingOf(0, 1)).toEqual({ facing: 'down', flip: false });
+    expect(facingOf(0, -1)).toEqual({ facing: 'up', flip: false });
+    expect(facingOf(1, 0)).toEqual({ facing: 'side', flip: false });
+    expect(facingOf(-1, 0)).toEqual({ facing: 'side', flip: true });
+    expect(facingOf(-1, -1)).toEqual({ facing: 'side', flip: true });
+  });
+
+  it('階の雰囲気(背景の絵のセット)は5階ごとに変わる', () => {
+    expect(THEMES.length).toBe(4);
+    expect(themeOf(1).id).toBe('cave');
+    expect(themeOf(5).id).toBe('cave');
+    expect(themeOf(6).id).toBe('ruins');
+    expect(themeOf(11).id).toBe('abyss');
+    expect(themeOf(20).id).toBe('sanctum');
   });
 });

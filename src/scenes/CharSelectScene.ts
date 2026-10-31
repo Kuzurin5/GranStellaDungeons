@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { CHARS, CHAR_IDS } from '../core/data';
+import { addCoverBg } from '../art';
 import { GAME_H, GAME_W, hex, newSeed, session, txt } from '../ui';
 
 export class CharSelectScene extends Phaser.Scene {
@@ -11,6 +12,7 @@ export class CharSelectScene extends Phaser.Scene {
   create() {
     this.idx = Math.max(0, CHAR_IDS.indexOf(session.charId));
     this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x0b0d14);
+    addCoverBg(this, 'ui/charselect_bg', GAME_W, GAME_H);
     txt(this, GAME_W / 2, 36, '挑戦するキャラクターを選ぶ', 30, '#9db4ff').setOrigin(0.5);
     txt(this, GAME_W / 2, 626, '← → で選択   Enterで決定   (1〜5キーでも選べる)', 18, '#8b95bd').setOrigin(0.5);
     this.layer = this.add.container(0, 0);
@@ -52,8 +54,9 @@ export class CharSelectScene extends Phaser.Scene {
       const sel = i === this.idx;
       const bg = this.add.rectangle(x, 80, cw, 530, sel ? 0x1c2340 : 0x121626).setOrigin(0, 0);
       bg.setStrokeStyle(sel ? 3 : 1, sel ? c.color : 0x2a3150);
-      const badge = this.add.circle(x + cw / 2, 140, 40, c.color);
-      const g = txt(this, x + cw / 2, 140, c.glyph, 40, '#0b0d14', { fontStyle: 'bold' }).setOrigin(0.5);
+      const hasPortrait = this.textures.exists(`chars/${id}_portrait`);
+      const badge = hasPortrait ? this.add.image(x + cw / 2, 140, `chars/${id}_portrait`).setDisplaySize(96, 96) : this.add.circle(x + cw / 2, 140, 40, c.color);
+      const g = hasPortrait ? this.add.container(0, 0) : txt(this, x + cw / 2, 140, c.glyph, 40, '#0b0d14', { fontStyle: 'bold' }).setOrigin(0.5);
       const name = txt(this, x + cw / 2, 205, c.name, 26, hex(c.color)).setOrigin(0.5);
       const role = txt(this, x + cw / 2, 240, c.role, 15, '#c7d0f5', { wordWrap: { width: cw - 16, useAdvancedWrap: true }, align: 'center' }).setOrigin(0.5, 0);
       const stats = txt(this, x + 14, 290,

@@ -35,3 +35,7 @@
 - すぐ遊ぶ: `npm install` のあと `npm run single` を実行し、できた `dist-single/play.html` をブラウザで開く(1ファイルで動く)
 - 開発サーバ: `npm run dev` を実行し、表示されたURL(通常 http://127.0.0.1:5173)を開く
 - 操作: 矢印 / QWEADZXC で8方向、S 待機、Space 攻撃、F 固有能力、I 持ち物、Enter 階段
+
+## 絵を入れる
+- 絵の大きさ・ファイル名・作り方(画像生成向けの指示文つき)は ASSET_SPEC.md
+- `public/art/` に PNG を置くと自動で差し替わる。今は仮の絵(`npm run art:placeholders`)

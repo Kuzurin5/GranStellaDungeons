@@ -1,14 +1,18 @@
 # 素材の差し替え方法
 
-現状は画像・音を使わず、図形・文字・絵文字で表示している。
+絵は `public/art/` に画像(PNG)を置くと自動で差し替わる。大きさ・名前・作り方は **ASSET_SPEC.md** を参照。
 
-| 対象 | 今の表示 | 差し替える場所 |
-|---|---|---|
-| キャラ | 色付きの円+カタカナ1文字 | `src/core/data.ts` の `CHARS`(`glyph`, `color`)。画像にするなら `src/scenes/DungeonScene.ts` の「プレイヤー」描画部で `this.add.image` に置き換える |
-| 敵 | 絵文字(`glyph`) | `src/core/data.ts` の `ENEMIES` / `BOSS` の `glyph`。画像にするなら `DungeonScene.render()` の「敵」部分 |
-| アイテム・罠 | 絵文字/記号 | `DungeonScene.ts` 先頭の `KIND_GLYPH` / `TRAP_GLYPH` |
-| 床・壁・階段 | 色付きの四角 | `DungeonScene.render()` の「マップ」部分(`fillRect` をタイルの `add.image` に) |
-| 画面 | Phaser のテキスト・図形 | `src/scenes/*.ts` |
-| 音 | なし | `DungeonScene.step()` の後(`Game.fx` の種類ごと)に `this.sound.play` を足す |
+- 仮の絵(絵文字と図形)の作成: `npm run art:placeholders`(既にあるファイルは上書きしない。`-- --force` で全部作り直す)
+- 絵の一覧の更新: `npm run art:index`(`npm run build` と `npm run dev` が自動で実行する)
+- 1ファイルで遊べる版(絵を埋め込む): `npm run single` → `dist-single/play.html`
+- 絵が無いものは、従来の図形・絵文字で表示される
 
-画像を使うときは `public/` に置き、`preload()` で読み込む。
+絵以外の差し替え口:
+
+| 対象 | 場所 |
+|---|---|
+| キャラの色・文字(絵が無いとき) | `src/core/data.ts` の `CHARS`(`glyph`, `color`) |
+| 敵の絵文字(絵が無いとき) | `src/core/data.ts` の `ENEMIES` / `BOSS` の `glyph` |
+| アイテム・罠の絵文字(絵が無いとき) | `src/scenes/DungeonScene.ts` 先頭の `KIND_GLYPH` / `TRAP_GLYPH` |
+| 階の雰囲気の切り替え | `src/view.ts` の `THEMES` |
+| 音 | なし(`Game.fx` の種類ごとに `this.sound.play` を足す) |

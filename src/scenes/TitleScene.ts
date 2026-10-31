@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { addCoverBg } from '../art';
 import { GAME_H, GAME_W, txt } from '../ui';
 
 export class TitleScene extends Phaser.Scene {
@@ -6,7 +7,8 @@ export class TitleScene extends Phaser.Scene {
 
   create() {
     this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x0b0d14);
-    for (let i = 0; i < 40; i++) {
+    const hasBg = addCoverBg(this, 'ui/title_bg', GAME_W, GAME_H);
+    for (let i = 0; i < (hasBg ? 0 : 40); i++) {
       this.add.circle(Phaser.Math.Between(0, GAME_W), Phaser.Math.Between(0, GAME_H), Phaser.Math.Between(1, 2), 0x6c7bd9, Phaser.Math.FloatBetween(0.2, 0.8));
     }
     txt(this, GAME_W / 2, 150, 'GranStellaDungeons', 64, '#9db4ff').setOrigin(0.5);

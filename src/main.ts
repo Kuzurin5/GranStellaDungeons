@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_H, GAME_W } from './ui';
+import { BootScene } from './scenes/BootScene';
 import { TitleScene } from './scenes/TitleScene';
 import { CharSelectScene } from './scenes/CharSelectScene';
 import { DungeonScene } from './scenes/DungeonScene';
@@ -11,7 +12,7 @@ const game = new Phaser.Game({
   height: GAME_H,
   backgroundColor: '#0b0d14',
   parent: document.getElementById('game') ?? undefined,
-  scene: [TitleScene, CharSelectScene, DungeonScene, GameOverScene, ClearScene],
+  scene: [BootScene, TitleScene, CharSelectScene, DungeonScene, GameOverScene, ClearScene],
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
 });
 

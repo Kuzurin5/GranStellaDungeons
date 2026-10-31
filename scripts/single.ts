@@ -1,12 +1,24 @@
 // ブラウザで遊べる単一HTMLを作る: dist-single/play.html(ダブルクリックで遊べる)と artifact.html(公開用の本文のみ)
 import { execSync } from 'node:child_process';
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
 
 execSync('npm run build', { stdio: 'inherit' });
 const assets = join('dist', 'assets');
 const jsName = readdirSync(assets).find((f) => f.endsWith('.js'))!;
 const js = readFileSync(join(assets, jsName), 'utf8').replace(/<\/script/gi, '<\\/script');
+
+// 絵(public/art の .png)を data URI にして埋め込む。1ファイルで絵も動くようにするため。
+const artRoot = join('public', 'art');
+const art: Record<string, string> = {};
+function walkArt(dir: string) {
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    if (statSync(p).isDirectory()) walkArt(p);
+    else if (name.toLowerCase().endsWith('.png')) art[relative(artRoot, p).split('\\').join('/')] = `data:image/png;base64,${readFileSync(p).toString('base64')}`;
+  }
+}
+if (existsSync(artRoot)) walkArt(artRoot);
 
 const body = `<meta name="claude:viewport-fit-sides" content="cover">
 <title>GranStellaDungeons</title>
@@ -44,6 +56,7 @@ const body = `<meta name="claude:viewport-fit-sides" content="cover">
     <span><b>階段</b> Enter</span>
   </p>
 </div>
+<script>window.__ART__ = ${JSON.stringify(art)};</script>
 <script type="module">
 ${js}
 </script>
@@ -52,4 +65,4 @@ mkdirSync('dist-single', { recursive: true });
 writeFileSync(join('dist-single', 'artifact.html'), body);
 writeFileSync(join('dist-single', 'play.html'),
   `<!doctype html>\n<html lang="ja">\n<head>\n<meta charset="UTF-8" />\n<meta name="viewport" content="width=device-width, initial-scale=1.0" />\n</head>\n<body>\n${body}</body>\n</html>\n`);
-console.log('作成: dist-single/play.html, dist-single/artifact.html');
+console.log(`作成: dist-single/play.html, dist-single/artifact.html(絵 ${Object.keys(art).length}枚を埋め込み)`);

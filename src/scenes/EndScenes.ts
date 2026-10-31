@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { CHARS } from '../core/data';
+import { addCoverBg } from '../art';
 import { GAME_H, GAME_W, session, txt } from '../ui';
 
 function summary(): string {
@@ -12,6 +13,7 @@ export class GameOverScene extends Phaser.Scene {
 
   create() {
     this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x140a0e);
+    addCoverBg(this, 'ui/gameover_bg', GAME_W, GAME_H);
     txt(this, GAME_W / 2, 190, '力尽きた…', 64, '#ff6b81').setOrigin(0.5);
     txt(this, GAME_W / 2, 280, summary(), 24, '#e8eaf2').setOrigin(0.5);
     txt(this, GAME_W / 2, 325, `原因: ${session.result!.cause}`, 20, '#c7a0a8').setOrigin(0.5);
@@ -27,7 +29,8 @@ export class ClearScene extends Phaser.Scene {
 
   create() {
     this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x0a1418);
-    for (let i = 0; i < 60; i++) {
+    const hasBg = addCoverBg(this, 'ui/clear_bg', GAME_W, GAME_H);
+    for (let i = 0; i < (hasBg ? 0 : 60); i++) {
       this.add.circle(Phaser.Math.Between(0, GAME_W), Phaser.Math.Between(0, GAME_H), Phaser.Math.Between(1, 3), 0xffe08a, Phaser.Math.FloatBetween(0.2, 0.9));
     }
     txt(this, GAME_W / 2, 190, '試練を踏破した!', 64, '#ffe08a').setOrigin(0.5);
